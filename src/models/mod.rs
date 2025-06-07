@@ -10,19 +10,22 @@ pub use charging_request::*;
 pub use charging_record::*;
 pub use user::*;
 
+use serde::{Serialize, Deserialize};
+
 // 充电模式
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ChargingMode {
     Fast,  // 快充
     Slow,  // 慢充
 }
 
 // 充电桩状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PileStatus {
-    Working,    // 正常工作
-    Fault,      // 故障
-    Shutdown,   // 关闭
+    Available,      // 空闲
+    Charging,       // 充电中
+    Fault,         // 故障
+    Shutdown,      // 关机
 }
 
 // 时段类型
@@ -35,6 +38,8 @@ pub enum TimeSlotType {
 
 // 系统常量
 pub const WAITING_AREA_CAPACITY: usize = 6;        // 等候区容量
+pub const FAST_CHARGING_PILES: usize = 2;          // 快充桩数量
+pub const SLOW_CHARGING_PILES: usize = 4;          // 慢充桩数量
 pub const PILE_QUEUE_CAPACITY: usize = 2;          // 每个充电桩队列容量
 pub const FAST_CHARGING_POWER: f64 = 30.0;         // 快充功率（度/小时）
 pub const SLOW_CHARGING_POWER: f64 = 7.0;          // 慢充功率（度/小时）
@@ -45,39 +50,58 @@ pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
 pub const NORMAL_PRICE: f64 = 0.7;    // 平时电价
 pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum RequestStatus {
+    Waiting,        // 等待中
+    Charging,       // 充电中
+    Completed,      // 已完成
+    Cancelled,      // 已取消
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::Utc;
+    use uuid::Uuid;
+    use crate::models::charging_pile::ChargingPile;
+    use crate::models::charging_request::ChargingRequest;
 
     #[test]
     fn test_charging_pile() {
-        let mut pile = ChargingPile::new("A".to_string(), ChargingMode::Fast);
-        assert_eq!(pile.status, PileStatus::Shutdown);
-        assert_eq!(pile.get_power(), FAST_CHARGING_POWER);
-
-        pile.start();
-        assert_eq!(pile.status, PileStatus::Working);
+        let mut pile = ChargingPile::new("C1".to_string(), ChargingMode::Fast);
         
-        pile.update_statistics(1.0, 30.0, 30.0, 24.0);
-        assert_eq!(pile.total_charging_times, 1);
-        assert_eq!(pile.total_charging_amount, 30.0);
+        // 测试初始状态
+        assert_eq!(pile.number, "C1");
+        assert_eq!(pile.mode, ChargingMode::Fast);
+        assert_eq!(pile.status, PileStatus::Available);
+        
+        // 测试充电过程
+        pile.start_charging().unwrap();
+        assert_eq!(pile.status, PileStatus::Charging);
+        
+        pile.stop_charging(1.0, 30.0).unwrap();
+        assert_eq!(pile.status, PileStatus::Available);
+        assert_eq!(pile.total_charge_count, 1);
+        assert_eq!(pile.total_charge_amount, 30.0);
     }
 
     #[test]
     fn test_charging_request() {
-        let user_id = Uuid::new_v4();
         let mut request = ChargingRequest::new(
-            user_id,
+            Uuid::new_v4(),
             ChargingMode::Fast,
             30.0,
             "F1".to_string(),
         );
-
+        
+        // 测试初始状态
         assert_eq!(request.status, RequestStatus::Waiting);
-        request.start_charging();
+        
+        // 测试状态转换
+        request.start_charging().unwrap();
         assert_eq!(request.status, RequestStatus::Charging);
-        request.complete();
+        
+        request.complete_charging().unwrap();
         assert_eq!(request.status, RequestStatus::Completed);
     }
 

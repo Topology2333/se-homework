@@ -1,6 +1,7 @@
+use crate::models::{ChargingMode, RequestStatus};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use super::ChargingMode;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChargingRequest {
@@ -9,16 +10,8 @@ pub struct ChargingRequest {
     pub mode: ChargingMode,         // 充电模式
     pub amount: f64,                // 请求充电量（度）
     pub queue_number: String,       // 排队号码（F1、F2、T1、T2等）
-    pub created_at: chrono::DateTime<chrono::Utc>,  // 创建时间
     pub status: RequestStatus,      // 请求状态
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RequestStatus {
-    Waiting,        // 等待中
-    Charging,       // 充电中
-    Completed,      // 已完成
-    Cancelled,      // 已取消
+    pub created_at: DateTime<Utc>,  // 创建时间
 }
 
 impl ChargingRequest {
@@ -29,21 +22,42 @@ impl ChargingRequest {
             mode,
             amount,
             queue_number,
-            created_at: chrono::Utc::now(),
             status: RequestStatus::Waiting,
+            created_at: Utc::now(),
         }
     }
 
-    pub fn start_charging(&mut self) {
-        self.status = RequestStatus::Charging;
+    /// 开始充电
+    pub fn start_charging(&mut self) -> Result<(), String> {
+        match self.status {
+            RequestStatus::Waiting => {
+                self.status = RequestStatus::Charging;
+                Ok(())
+            }
+            _ => Err("请求状态不正确".to_string()),
+        }
     }
 
-    pub fn complete(&mut self) {
-        self.status = RequestStatus::Completed;
+    /// 完成充电
+    pub fn complete_charging(&mut self) -> Result<(), String> {
+        match self.status {
+            RequestStatus::Charging => {
+                self.status = RequestStatus::Completed;
+                Ok(())
+            }
+            _ => Err("请求状态不正确".to_string()),
+        }
     }
 
-    pub fn cancel(&mut self) {
-        self.status = RequestStatus::Cancelled;
+    /// 取消请求
+    pub fn cancel(&mut self) -> Result<(), String> {
+        match self.status {
+            RequestStatus::Waiting | RequestStatus::Charging => {
+                self.status = RequestStatus::Cancelled;
+                Ok(())
+            }
+            _ => Err("请求状态不正确".to_string()),
+        }
     }
 
     pub fn update_amount(&mut self, new_amount: f64) {
@@ -53,5 +67,62 @@ impl ChargingRequest {
     pub fn update_mode(&mut self, new_mode: ChargingMode, new_queue_number: String) {
         self.mode = new_mode;
         self.queue_number = new_queue_number;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_request() {
+        let user_id = Uuid::new_v4();
+        let request = ChargingRequest::new(
+            user_id,
+            ChargingMode::Fast,
+            30.0,
+            "F1".to_string(),
+        );
+
+        assert_eq!(request.user_id, user_id);
+        assert_eq!(request.mode, ChargingMode::Fast);
+        assert_eq!(request.amount, 30.0);
+        assert_eq!(request.queue_number, "F1");
+        assert_eq!(request.status, RequestStatus::Waiting);
+    }
+
+    #[test]
+    fn test_request_lifecycle() {
+        let mut request = ChargingRequest::new(
+            Uuid::new_v4(),
+            ChargingMode::Fast,
+            30.0,
+            "F1".to_string(),
+        );
+
+        // 开始充电
+        request.start_charging().unwrap();
+        assert_eq!(request.status, RequestStatus::Charging);
+
+        // 完成充电
+        request.complete_charging().unwrap();
+        assert_eq!(request.status, RequestStatus::Completed);
+    }
+
+    #[test]
+    fn test_cancel_request() {
+        let mut request = ChargingRequest::new(
+            Uuid::new_v4(),
+            ChargingMode::Fast,
+            30.0,
+            "F1".to_string(),
+        );
+
+        // 等待状态下取消
+        request.cancel().unwrap();
+        assert_eq!(request.status, RequestStatus::Cancelled);
+
+        // 已取消状态下不能再取消
+        assert!(request.cancel().is_err());
     }
 } 
