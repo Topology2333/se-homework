@@ -37,10 +37,13 @@ export default {
   methods: {
     async login() {
       try {
-        await axios.post('http://localhost:8080/login', {
+        const response = await axios.post('http://localhost:8080/login', {
           username: this.form.username,
           password: this.form.password
-        })
+        });
+        const user = response.data;
+        console.log('登录成功，用户信息：', user);
+        localStorage.setItem('user', JSON.stringify(user));
         this.$router.push('/main')
       } catch {
         alert('登录失败')

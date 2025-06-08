@@ -76,7 +76,7 @@ async fn login_user(
 
 
     match result {
-        Ok(Some(_user)) => HttpResponse::Ok().body("登录成功"),
+        Ok(Some(_user)) => HttpResponse::Ok().json(_user),
         Ok(None) => HttpResponse::Unauthorized().body("用户名或密码错误"),
         Err(_) => HttpResponse::InternalServerError().body("服务器异常"),
     }
