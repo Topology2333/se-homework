@@ -1,15 +1,16 @@
-mod charging_pile;
+pub mod charging_pile;
 mod vehicle;
 mod charging_request;
 mod charging_record;
 pub mod user;
 
-pub use charging_pile::*;
 pub use vehicle::*;
 pub use charging_request::*;
 pub use charging_record::*;
 pub use user::*;
+pub use self::charging_pile::{ChargingPile, PileStatus, ChargingMode};
 
+use sqlx::Type;
 use serde::{Serialize, Deserialize};
 use sqlx::Type; // 引入 sqlx::Type trait
 
