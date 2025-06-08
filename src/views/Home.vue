@@ -40,12 +40,16 @@ export default {
         const response = await axios.post('http://localhost:8080/login', {
           username: this.form.username,
           password: this.form.password
-        });
-        const user = response.data;
-        console.log('登录成功，用户信息：', user);
-        localStorage.setItem('user', JSON.stringify(user));
+        })
+        
+        // 存储用户信息到localStorage
+        localStorage.setItem('user', JSON.stringify({
+          id: response.data.id,
+          username: response.data.username
+        }))
+        
         this.$router.push('/main')
-      } catch {
+      } catch (error) {
         alert('登录失败')
       }
     },

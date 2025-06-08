@@ -12,23 +12,50 @@ pub use self::charging_pile::{ChargingPile, PileStatus, ChargingMode};
 
 use sqlx::Type;
 use serde::{Serialize, Deserialize};
+use sqlx::Type; // 引入 sqlx::Type trait
+
+// 充电模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ChargingMode {
+    Fast,  // 快充
+    Slow,  // 慢充
+}
+
+impl From<String> for ChargingMode {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Fast" => ChargingMode::Fast,
+            "Slow" => ChargingMode::Slow,
+            _ => panic!("Unknown charging mode: {}", s),
+        }
+    }
+}
+
+// 充电桩状态
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PileStatus {
+    Available,       // 空闲
+    Charging,        // 充电中
+    Fault,           // 故障
+    Shutdown,        // 关机
+}
 
 // 时段类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeSlotType {
-    Peak,       // 峰时 10:00-15:00, 18:00-21:00
-    Normal,     // 平时 7:00-10:00, 15:00-18:00, 21:00-23:00
-    Valley,     // 谷时 23:00-次日7:00
+    Peak,     // 峰时 10:00-15:00, 18:00-21:00
+    Normal,   // 平时 7:00-10:00, 15:00-18:00, 21:00-23:00
+    Valley,   // 谷时 23:00-次日7:00
 }
 
 // 系统常量
-pub const WAITING_AREA_CAPACITY: usize = 6;        // 等候区容量
-pub const FAST_CHARGING_PILES: usize = 2;          // 快充桩数量
-pub const SLOW_CHARGING_PILES: usize = 4;          // 慢充桩数量
-pub const PILE_QUEUE_CAPACITY: usize = 2;          // 每个充电桩队列容量
-pub const FAST_CHARGING_POWER: f64 = 30.0;         // 快充功率（度/小时）
-pub const SLOW_CHARGING_POWER: f64 = 7.0;          // 慢充功率（度/小时）
-pub const SERVICE_FEE_RATE: f64 = 0.8;            // 服务费率（元/度）
+pub const WAITING_AREA_CAPACITY: usize = 6;         // 等候区容量
+pub const FAST_CHARGING_PILES: usize = 2;           // 快充桩数量
+pub const SLOW_CHARGING_PILES: usize = 4;           // 慢充桩数量
+pub const PILE_QUEUE_CAPACITY: usize = 2;           // 每个充电桩队列容量
+pub const FAST_CHARGING_POWER: f64 = 30.0;          // 快充功率（度/小时）
+pub const SLOW_CHARGING_POWER: f64 = 7.0;           // 慢充功率（度/小时）
+pub const SERVICE_FEE_RATE: f64 = 0.8;             // 服务费率（元/度）
 
 // 电价常量
 pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
@@ -37,10 +64,10 @@ pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RequestStatus {
-    Waiting,        // 等待中
-    Charging,       // 充电中
-    Completed,      // 已完成
-    Cancelled,      // 已取消
+    Waiting,         // 等待中
+    Charging,        // 充电中
+    Completed,       // 已完成
+    Cancelled,       // 已取消
 }
 
 #[cfg(test)]
@@ -101,4 +128,4 @@ mod tests {
         vehicle.update_battery(50.0);
         assert_eq!(vehicle.current_battery, 50.0);
     }
-} 
+}

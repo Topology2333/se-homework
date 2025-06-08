@@ -1,6 +1,8 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use crate::models::user::User;
+use crate::models::ChargingRecord;
 use sqlx::MySqlPool;
+use serde_json::json;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -74,16 +76,40 @@ async fn login_user(
     .fetch_optional(db_pool.get_ref())
     .await;
 
-
     match result {
-        Ok(Some(_user)) => HttpResponse::Ok().json(_user),
+        Ok(Some(user)) => {
+            // 返回用户ID和用户名
+            HttpResponse::Ok().json(json!({
+                "id": user.id.to_string(),
+                "username": user.username
+            }))
+        }
         Ok(None) => HttpResponse::Unauthorized().body("用户名或密码错误"),
-        Err(_) => HttpResponse::InternalServerError().body("服务器异常"),
+        Err(e) => {
+            eprintln!("登录失败: {:?}", e);
+            HttpResponse::InternalServerError().body("服务器异常")
+        }
+    }
+}
+
+#[get("/users/{user_id}/charging_records")] // 根据用户ID获取充电详单
+async fn get_user_charging_records(
+    db_pool: web::Data<MySqlPool>,
+    path: web::Path<Uuid>, // 从路径中获取 user_id
+) -> impl Responder {
+    let user_id = path.into_inner();
+    match ChargingRecord::find_by_user_id(user_id, db_pool.get_ref()).await { // 调用 ChargingRecord 的查询方法
+        Ok(records) => HttpResponse::Ok().json(records),
+        Err(e) => {
+            eprintln!("Error fetching charging records: {:?}", e);
+            HttpResponse::InternalServerError().body("Failed to fetch charging records")
+        },
     }
 }
 
 pub fn user_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_users)
        .service(register_user)
-       .service(login_user);
+       .service(login_user)
+       .service(get_user_charging_records); 
 }
