@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use sqlx::MySqlPool;
 use uuid::Uuid;
-
+use chrono::{DateTime, Utc};
 // 充电模式
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "ENUM('Fast', 'Slow')", rename_all = "PascalCase")]
