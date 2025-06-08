@@ -1,7 +1,7 @@
 <template>
   <el-container style="width: 60vw;margin: 0 auto; padding: 20px;background: transparent;background-color:  rgba(255, 255, 255, 0.8);">
     <el-header style="font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px;">
-      用户主页
+      用户主页 - 欢迎，{{ username }}
     </el-header>
 
     <el-main style="">
@@ -35,11 +35,18 @@ export default {
   name: "UserHome",
   data() {
     return {
-      // 模拟数据，后续可替换成真实接口数据
       queueNumber: 'F3',
       mode: 'F', // F=快充，T=慢充
       waitingCount: 2,
+      username: '用户'
     };
+  },
+  created() {
+    // 从localStorage获取用户名
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+      this.username = user.username;
+    }
   },
   computed: {
     modeText() {
@@ -48,10 +55,10 @@ export default {
   },
   methods: {
     goToRequest() {
-      this.$router.push('/request');  // 跳转到充电请求页面
+      this.$router.push('/request');
     },
     goToDetails() {
-      this.$router.push('/details');  // 跳转到充电详单页面
+      this.$router.push('/details');
     }
   }
 };
