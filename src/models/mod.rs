@@ -42,6 +42,17 @@ pub enum RequestStatus {
     Cancelled,       // 已取消
 }
 
+impl ToString for RequestStatus {
+    fn to_string(&self) -> String {
+        match self {
+            RequestStatus::Waiting => "Waiting".to_string(),
+            RequestStatus::Charging => "Charging".to_string(),
+            RequestStatus::Completed => "Completed".to_string(),
+            RequestStatus::Cancelled => "Cancelled".to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
