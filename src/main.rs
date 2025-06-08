@@ -6,6 +6,7 @@ use actix_web::{App, HttpServer, web};
 use dotenv::dotenv;
 use actix_cors::Cors;
 use routes::user::user_routes;
+use routes::pile_api::pile_routes;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -17,6 +18,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Cors::permissive())
             .app_data(web::Data::new(db_pool.clone()))
             .configure(user_routes)
+            .configure(pile_routes)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

@@ -1,32 +1,17 @@
-mod charging_pile;
+pub mod charging_pile;
 mod vehicle;
 mod charging_request;
 mod charging_record;
 pub mod user;
 
-pub use charging_pile::*;
 pub use vehicle::*;
 pub use charging_request::*;
 pub use charging_record::*;
 pub use user::*;
+pub use self::charging_pile::{ChargingPile, PileStatus, ChargingMode};
 
+use sqlx::Type;
 use serde::{Serialize, Deserialize};
-
-// 充电模式
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ChargingMode {
-    Fast,  // 快充
-    Slow,  // 慢充
-}
-
-// 充电桩状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PileStatus {
-    Available,      // 空闲
-    Charging,       // 充电中
-    Fault,         // 故障
-    Shutdown,      // 关机
-}
 
 // 时段类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
