@@ -2,7 +2,7 @@ mod charging_pile;
 mod vehicle;
 mod charging_request;
 mod charging_record;
-mod user;
+pub mod user;
 
 pub use charging_pile::*;
 pub use vehicle::*;

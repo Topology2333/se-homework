@@ -1,13 +1,16 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use chrono::{DateTime, Utc};
+use sqlx::FromRow;
+use sqlx::MySql;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct User {
-    pub id: Uuid,                // 用户ID
-    pub username: String,        // 用户名
-    pub password_hash: String,   // 密码哈希
-    pub is_admin: bool,         // 是否是管理员
-    pub created_at: chrono::DateTime<chrono::Utc>,  // 创建时间
+    pub id: Uuid,
+    pub username: String,
+    pub password_hash: String,
+    pub is_admin: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 impl User {
@@ -17,7 +20,35 @@ impl User {
             username,
             password_hash,
             is_admin,
-            created_at: chrono::Utc::now(),
+            created_at: Utc::now(),
         }
     }
-} 
+
+    pub async fn insert(&self, pool: &sqlx::MySqlPool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            INSERT INTO users (id, username, password_hash, is_admin, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            "#,
+            self.id,
+            self.username,
+            self.password_hash,
+            self.is_admin,
+            self.created_at
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+pub async fn get_all(pool: &sqlx::MySqlPool) -> Result<Vec<User>, sqlx::Error> {
+    let users = sqlx::query_as::<MySql, User>(
+        "SELECT id, username, password_hash, is_admin, created_at FROM users"
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(users)
+}
+
+}
