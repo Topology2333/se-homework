@@ -1,8 +1,7 @@
 use super::{FAST_CHARGING_POWER, SLOW_CHARGING_POWER};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
-use sqlx::{MySql, MySqlPool};
+use sqlx::MySqlPool;
 use uuid::Uuid;
 
 // 充电模式
@@ -11,6 +10,16 @@ use uuid::Uuid;
 pub enum ChargingMode {
     Fast, // 快充
     Slow, // 慢充
+}
+
+impl From<String> for ChargingMode {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Fast" => ChargingMode::Fast,
+            "Slow" => ChargingMode::Slow,
+            _ => panic!("Unknown charging mode: {}", s),
+        }
+    }
 }
 
 // 充电桩状态
