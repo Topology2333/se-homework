@@ -1,6 +1,6 @@
 pub mod charging_pile;
 mod vehicle;
-mod charging_request;
+pub mod charging_request;
 mod charging_record;
 pub mod user;
 
@@ -35,12 +35,14 @@ pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
 pub const NORMAL_PRICE: f64 = 0.7;    // 平时电价
 pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Type, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(i8)]            // ← 映射到数据库 TINYINT
+#[sqlx(type_name = "TINYINT")]   // 映射到 MySQL tinyint
 pub enum RequestStatus {
-    Waiting,        // 等待中
-    Charging,       // 充电中
-    Completed,      // 已完成
-    Cancelled,      // 已取消
+    Waiting   = 0,
+    Charging  = 1,
+    Completed = 2,
+    Cancelled = 3,
 }
 
 #[cfg(test)]

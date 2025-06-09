@@ -2,6 +2,7 @@ use crate::models::{ChargingMode, RequestStatus};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use sqlx::{MySqlPool};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChargingRequest {
@@ -67,6 +68,32 @@ impl ChargingRequest {
     pub fn update_mode(&mut self, new_mode: ChargingMode, new_queue_number: String) {
         self.mode = new_mode;
         self.queue_number = new_queue_number;
+    }
+    pub async fn get_waiting_requests(
+        pool: &MySqlPool,
+        pile_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            r#"
+            SELECT
+                cr.id            AS "id!: Uuid",
+                cr.user_id       AS "user_id!: Uuid",
+                cr.mode          AS "mode!: ChargingMode",
+                CAST(cr.amount AS DOUBLE)  AS "amount!: f64",
+                cr.queue_number  AS "queue_number!: String",
+                cr.status        AS "status!: RequestStatus",
+                cr.created_at    AS "created_at!: DateTime<Utc>"
+            FROM charging_request AS cr
+            JOIN charging_piles   AS cp ON cp.number = cr.queue_number
+            WHERE cp.id    = ?
+            ORDER BY cr.created_at
+            "#,
+            pile_id,
+        )
+
+        .fetch_all(pool)
+        .await
     }
 }
 

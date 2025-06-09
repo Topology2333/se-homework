@@ -46,6 +46,7 @@ export default {
       this.$router.push({ path: `/${index}` });
     },
     logout() {
+      this.isAdmin = false;     //防止客户在刷新页面访问到admin
       this.$router.push('/home');
     },
     checkAdminStatus() {
