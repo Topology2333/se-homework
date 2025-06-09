@@ -10,35 +10,7 @@ pub use charging_record::*;
 pub use user::*;
 pub use self::charging_pile::{ChargingPile, PileStatus, ChargingMode};
 
-use sqlx::Type;
 use serde::{Serialize, Deserialize};
-use sqlx::Type; // 引入 sqlx::Type trait
-
-// 充电模式
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ChargingMode {
-    Fast,  // 快充
-    Slow,  // 慢充
-}
-
-impl From<String> for ChargingMode {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "Fast" => ChargingMode::Fast,
-            "Slow" => ChargingMode::Slow,
-            _ => panic!("Unknown charging mode: {}", s),
-        }
-    }
-}
-
-// 充电桩状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PileStatus {
-    Available,       // 空闲
-    Charging,        // 充电中
-    Fault,           // 故障
-    Shutdown,        // 关机
-}
 
 // 时段类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,12 +34,25 @@ pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
 pub const NORMAL_PRICE: f64 = 0.7;    // 平时电价
 pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "VARCHAR")]
+#[sqlx(rename_all = "lowercase")]
 pub enum RequestStatus {
     Waiting,         // 等待中
     Charging,        // 充电中
     Completed,       // 已完成
     Cancelled,       // 已取消
+}
+
+impl ToString for RequestStatus {
+    fn to_string(&self) -> String {
+        match self {
+            RequestStatus::Waiting => "Waiting".to_string(),
+            RequestStatus::Charging => "Charging".to_string(),
+            RequestStatus::Completed => "Completed".to_string(),
+            RequestStatus::Cancelled => "Cancelled".to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
