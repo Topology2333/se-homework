@@ -51,6 +51,7 @@ export default {
     },
     checkAdminStatus() {
       const user = JSON.parse(localStorage.getItem('user'));
+			console.log('从 localStorage 获取的用户信息:', user);
       if (user && user.is_admin) {
         this.isAdmin = true; // 如果是管理员，更新 isAdmin 状态
       } else {

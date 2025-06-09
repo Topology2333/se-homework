@@ -10,39 +10,49 @@ pub use charging_record::*;
 pub use user::*;
 pub use self::charging_pile::{ChargingPile, PileStatus, ChargingMode};
 
-use sqlx::Type;
 use serde::{Serialize, Deserialize};
 
 // 时段类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeSlotType {
-    Peak,       // 峰时 10:00-15:00, 18:00-21:00
-    Normal,     // 平时 7:00-10:00, 15:00-18:00, 21:00-23:00
-    Valley,     // 谷时 23:00-次日7:00
+    Peak,     // 峰时 10:00-15:00, 18:00-21:00
+    Normal,   // 平时 7:00-10:00, 15:00-18:00, 21:00-23:00
+    Valley,   // 谷时 23:00-次日7:00
 }
 
 // 系统常量
-pub const WAITING_AREA_CAPACITY: usize = 6;        // 等候区容量
-pub const FAST_CHARGING_PILES: usize = 2;          // 快充桩数量
-pub const SLOW_CHARGING_PILES: usize = 4;          // 慢充桩数量
-pub const PILE_QUEUE_CAPACITY: usize = 2;          // 每个充电桩队列容量
-pub const FAST_CHARGING_POWER: f64 = 30.0;         // 快充功率（度/小时）
-pub const SLOW_CHARGING_POWER: f64 = 7.0;          // 慢充功率（度/小时）
-pub const SERVICE_FEE_RATE: f64 = 0.8;            // 服务费率（元/度）
+pub const WAITING_AREA_CAPACITY: usize = 6;         // 等候区容量
+pub const FAST_CHARGING_PILES: usize = 2;           // 快充桩数量
+pub const SLOW_CHARGING_PILES: usize = 4;           // 慢充桩数量
+pub const PILE_QUEUE_CAPACITY: usize = 2;           // 每个充电桩队列容量
+pub const FAST_CHARGING_POWER: f64 = 30.0;          // 快充功率（度/小时）
+pub const SLOW_CHARGING_POWER: f64 = 7.0;           // 慢充功率（度/小时）
+pub const SERVICE_FEE_RATE: f64 = 0.8;             // 服务费率（元/度）
 
 // 电价常量
 pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
 pub const NORMAL_PRICE: f64 = 0.7;    // 平时电价
 pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
-#[derive(Type, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(i8)]            // ← 映射到数据库 TINYINT
-#[sqlx(type_name = "TINYINT")]   // 映射到 MySQL tinyint
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "VARCHAR")]
+#[sqlx(rename_all = "lowercase")]
 pub enum RequestStatus {
-    Waiting   = 0,
-    Charging  = 1,
-    Completed = 2,
-    Cancelled = 3,
+    Waiting,         // 等待中
+    Charging,        // 充电中
+    Completed,       // 已完成
+    Cancelled,       // 已取消
+}
+
+impl ToString for RequestStatus {
+    fn to_string(&self) -> String {
+        match self {
+            RequestStatus::Waiting => "Waiting".to_string(),
+            RequestStatus::Charging => "Charging".to_string(),
+            RequestStatus::Completed => "Completed".to_string(),
+            RequestStatus::Cancelled => "Cancelled".to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -103,4 +113,4 @@ mod tests {
         vehicle.update_battery(50.0);
         assert_eq!(vehicle.current_battery, 50.0);
     }
-} 
+}
