@@ -34,7 +34,9 @@ pub const PEAK_PRICE: f64 = 1.0;      // 峰时电价
 pub const NORMAL_PRICE: f64 = 0.7;    // 平时电价
 pub const VALLEY_PRICE: f64 = 0.4;    // 谷时电价
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "VARCHAR")]
+#[sqlx(rename_all = "lowercase")]
 pub enum RequestStatus {
     Waiting,         // 等待中
     Charging,        // 充电中

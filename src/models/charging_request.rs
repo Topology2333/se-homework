@@ -171,6 +171,7 @@ impl ChargingRequest {
     }
 
     /// 获取指定模式和状态的充电请求队列
+    // TODO: solve enum binding issue
     pub async fn get_queue(pool: &MySqlPool, mode: ChargingMode, status: RequestStatus) -> Result<Vec<ChargingRequest>, sqlx::Error> {
         let requests = sqlx::query_as!(
             ChargingRequest,
