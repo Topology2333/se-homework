@@ -269,9 +269,9 @@ impl ChargingRequest {
     pub async fn get_waiting_requests(
         pool: &MySqlPool,
         pile_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
         sqlx::query_as!(
-            Self,
+            ChargingRequest,
             r#"
             SELECT
                 cr.id            AS "id!: Uuid",
@@ -292,6 +292,7 @@ impl ChargingRequest {
         .fetch_all(pool)
         .await
     }
+
 }
 
 #[cfg(test)]
