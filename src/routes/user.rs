@@ -77,13 +77,7 @@ async fn login_user(
     .await;
 
     match result {
-        Ok(Some(user)) => {
-            // 返回用户ID和用户名
-            HttpResponse::Ok().json(json!({
-                "id": user.id.to_string(),
-                "username": user.username
-            }))
-        }
+        Ok(Some(_user)) => HttpResponse::Ok().json(_user),
         Ok(None) => HttpResponse::Unauthorized().body("用户名或密码错误"),
         Err(e) => {
             eprintln!("登录失败: {:?}", e);
