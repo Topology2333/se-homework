@@ -2,16 +2,17 @@ use crate::models::{ChargingMode, RequestStatus};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{MySqlPool, Type};
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ChargingRequest {
     pub id: Uuid,                  // 请求ID
     pub user_id: Uuid,             // 用户ID
-    pub mode: ChargingMode,        // 充电模式
+    pub mode: String,              // 充电模式
     pub amount: f64,               // 请求充电量（度）
     pub queue_number: String,      // 排队号码（F1、F2、T1、T2等）
-    pub status: RequestStatus,     // 请求状态
+    pub status: String,            // 请求状态
     pub created_at: DateTime<Utc>, // 创建时间
     pub updated_at: DateTime<Utc>, // 更新时间
 }
@@ -22,10 +23,10 @@ impl ChargingRequest {
         Self {
             id: Uuid::new_v4(),
             user_id,
-            mode,
+            mode: mode.to_string(),
             amount,
             queue_number,
-            status: RequestStatus::Waiting,
+            status: RequestStatus::Waiting.to_string(),
             created_at: now,
             updated_at: now,
         }
@@ -33,9 +34,10 @@ impl ChargingRequest {
 
     /// 开始充电
     pub fn start_charging(&mut self) -> Result<(), String> {
-        match self.status {
+        let status = RequestStatus::from_str(&self.status)?;
+        match status {
             RequestStatus::Waiting => {
-                self.status = RequestStatus::Charging;
+                self.status = RequestStatus::Charging.to_string();
                 Ok(())
             }
             _ => Err("请求状态不正确".to_string()),
@@ -44,9 +46,10 @@ impl ChargingRequest {
 
     /// 完成充电
     pub fn complete_charging(&mut self) -> Result<(), String> {
-        match self.status {
+        let status = RequestStatus::from_str(&self.status)?;
+        match status {
             RequestStatus::Charging => {
-                self.status = RequestStatus::Completed;
+                self.status = RequestStatus::Completed.to_string();
                 Ok(())
             }
             _ => Err("请求状态不正确".to_string()),
@@ -55,9 +58,10 @@ impl ChargingRequest {
 
     /// 取消请求
     pub fn cancel(&mut self) -> Result<(), String> {
-        match self.status {
+        let status = RequestStatus::from_str(&self.status)?;
+        match status {
             RequestStatus::Waiting | RequestStatus::Charging => {
-                self.status = RequestStatus::Cancelled;
+                self.status = RequestStatus::Cancelled.to_string();
                 Ok(())
             }
             _ => Err("请求状态不正确".to_string()),
@@ -69,7 +73,7 @@ impl ChargingRequest {
     }
 
     pub fn update_mode(&mut self, new_mode: ChargingMode, new_queue_number: String) {
-        self.mode = new_mode;
+        self.mode = new_mode.to_string();
         self.queue_number = new_queue_number;
         self.updated_at = Utc::now();
     }
@@ -101,26 +105,24 @@ impl ChargingRequest {
         pool: &MySqlPool,
         id: Uuid,
     ) -> Result<Option<ChargingRequest>, sqlx::Error> {
-        let request = sqlx::query_as!(
-            ChargingRequest,
+        sqlx::query_as::<_, ChargingRequest>(
             r#"
             SELECT 
-                id as "id: Uuid",
-                user_id as "user_id: Uuid",
-                mode as "mode: ChargingMode",
+                id,
+                user_id,
+                mode,
                 amount,
                 queue_number,
-                status as "status: RequestStatus",
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>"
+                status,
+                created_at,
+                updated_at
             FROM charging_requests
             WHERE id = ?
             "#,
-            id
         )
+        .bind(id.to_string())
         .fetch_optional(pool)
-        .await?;
-        Ok(request)
+        .await
     }
 
     /// 根据用户ID查询充电请求
@@ -128,27 +130,25 @@ impl ChargingRequest {
         pool: &MySqlPool,
         user_id: Uuid,
     ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        let requests = sqlx::query_as!(
-            ChargingRequest,
+        sqlx::query_as::<_, ChargingRequest>(
             r#"
             SELECT 
-                id as "id: Uuid",
-                user_id as "user_id: Uuid",
-                mode as "mode: ChargingMode",
+                id,
+                user_id,
+                mode,
                 amount,
                 queue_number,
-                status as "status: RequestStatus",
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>"
+                status,
+                created_at,
+                updated_at
             FROM charging_requests
             WHERE user_id = ?
             ORDER BY created_at DESC
             "#,
-            user_id
         )
+        .bind(user_id.to_string())
         .fetch_all(pool)
-        .await?;
-        Ok(requests)
+        .await
     }
 
     /// 获取指定状态的充电请求
@@ -156,27 +156,25 @@ impl ChargingRequest {
         pool: &MySqlPool,
         status: RequestStatus,
     ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        let requests = sqlx::query_as!(
-            ChargingRequest,
+        sqlx::query_as::<_, ChargingRequest>(
             r#"
-            SELECT 
-                id as "id: Uuid",
-                user_id as "user_id: Uuid",
-                mode as "mode: ChargingMode",
-                amount,
-                queue_number,
-                status as "status: RequestStatus",
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>"
-            FROM charging_requests
-            WHERE status = ?
-            ORDER BY created_at ASC
-            "#,
-            status.to_string()
+        SELECT 
+            id,
+            user_id,
+            mode,
+            amount,
+            queue_number,
+            status,
+            created_at,
+            updated_at
+        FROM charging_requests
+        WHERE status = ?
+        ORDER BY created_at ASC
+        "#,
         )
+        .bind(status.to_string()) // ✅ 将枚举转换为字符串再绑定
         .fetch_all(pool)
-        .await?;
-        Ok(requests)
+        .await
     }
 
     /// 获取指定模式和状态的充电请求队列
@@ -213,7 +211,7 @@ impl ChargingRequest {
         pool: &MySqlPool,
         new_status: RequestStatus,
     ) -> Result<(), sqlx::Error> {
-        self.status = new_status;
+        self.status = new_status.to_string();
         self.updated_at = Utc::now();
 
         sqlx::query!(
