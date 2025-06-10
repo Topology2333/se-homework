@@ -1,8 +1,8 @@
-use crate::models::{
-    ChargingMode, ChargingPile, ChargingRequest,
-    FAST_CHARGING_POWER, SLOW_CHARGING_POWER,
-};
 use super::queue_manager::QueueManager;
+use crate::models::{
+    ChargingMode, ChargingPile, ChargingRequest, FAST_CHARGING_POWER, SLOW_CHARGING_POWER,
+};
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -31,17 +31,27 @@ impl Dispatcher {
 
         // 检查充电桩队列是否有空位
         let queue_length = self.queue_manager.get_pile_queue_length(&pile.number).await;
-        if queue_length >= 2 { // 每个充电桩队列最多2辆车
+        if queue_length >= 2 {
+            // 每个充电桩队列最多2辆车
             return Ok(());
         }
 
         // 获取等候区中的所有请求，找到对应模式的第一个请求
         let waiting_requests = self.queue_manager.get_waiting_queue().await;
-        if let Some(request) = waiting_requests.iter().find(|r| r.mode == pile.mode) {
+        if let Some(request) = waiting_requests
+            .iter()
+            .find(|r| r.mode == pile.mode.to_string())
+        {
             // 将请求从等候区移除
-            if let Some(request) = self.queue_manager.remove_from_waiting_queue(request.id).await {
+            if let Some(request) = self
+                .queue_manager
+                .remove_from_waiting_queue(request.id)
+                .await
+            {
                 // 添加到充电桩队列
-                self.queue_manager.add_to_pile_queue(&pile.number, request).await?;
+                self.queue_manager
+                    .add_to_pile_queue(&pile.number, request)
+                    .await?;
             }
         }
 
@@ -49,11 +59,7 @@ impl Dispatcher {
     }
 
     // 计算在指定充电桩完成充电所需的总时间
-    async fn calculate_total_time(
-        &self,
-        pile: &ChargingPile,
-        request: &ChargingRequest,
-    ) -> f64 {
+    async fn calculate_total_time(&self, pile: &ChargingPile, request: &ChargingRequest) -> f64 {
         let queue_length = self.queue_manager.get_pile_queue_length(&pile.number).await;
         let power = match pile.mode {
             ChargingMode::Fast => FAST_CHARGING_POWER,
@@ -72,12 +78,10 @@ impl Dispatcher {
     }
 
     // 为请求选择最佳充电桩
-    async fn select_best_pile(
-        &self,
-        request: &ChargingRequest,
-    ) -> Option<Arc<ChargingPile>> {
-        let available_piles = self.queue_manager.get_available_piles(request.mode).await;
-        
+    async fn select_best_pile(&self, request: &ChargingRequest) -> Option<Arc<ChargingPile>> {
+        let mode = ChargingMode::from(request.mode.clone());
+        let available_piles = self.queue_manager.get_available_piles(mode).await;
+
         if available_piles.is_empty() {
             return None;
         }
@@ -121,11 +125,15 @@ impl Dispatcher {
         }
 
         // 选择最佳充电桩
-        let best_pile = self.select_best_pile(&request).await
+        let best_pile = self
+            .select_best_pile(&request)
+            .await
             .ok_or("没有可用的充电桩".to_string())?;
 
         // 将请求添加到充电桩队列
-        self.queue_manager.add_to_pile_queue(&best_pile.number, request).await
+        self.queue_manager
+            .add_to_pile_queue(&best_pile.number, request)
+            .await
     }
 
     // 处理充电桩故障
@@ -135,11 +143,13 @@ impl Dispatcher {
 
         // 获取故障充电桩的信息
         let piles = self.queue_manager.get_piles().await;
-        let _pile = piles.get(pile_id)
-            .ok_or("充电桩不存在".to_string())?;
-        
+        let _pile = piles.get(pile_id).ok_or("充电桩不存在".to_string())?;
+
         // 获取故障充电桩的队列
-        let requests = self.queue_manager.get_pile_queue(pile_id).await
+        let requests = self
+            .queue_manager
+            .get_pile_queue(pile_id)
+            .await
             .ok_or("无法获取充电桩队列".to_string())?;
 
         // 将故障队列中的车辆重新分配到其他充电桩
@@ -147,7 +157,9 @@ impl Dispatcher {
             // 选择最佳充电桩（排除故障充电桩）
             if let Some(best_pile) = self.select_best_pile(&request).await {
                 // 将请求添加到新的充电桩队列
-                self.queue_manager.add_to_pile_queue(&best_pile.number, request).await?;
+                self.queue_manager
+                    .add_to_pile_queue(&best_pile.number, request)
+                    .await?;
             } else {
                 // 如果没有可用的充电桩，将请求放回等候区
                 self.queue_manager.add_to_waiting_queue(request).await?;
@@ -170,9 +182,8 @@ impl Dispatcher {
 
         // 获取所有同类型充电桩中尚未充电的车辆
         let piles = self.queue_manager.get_piles().await;
-        let recovered_pile = piles.get(pile_id)
-            .ok_or("充电桩不存在".to_string())?;
-        
+        let recovered_pile = piles.get(pile_id).ok_or("充电桩不存在".to_string())?;
+
         let mut all_requests = Vec::new();
 
         // 收集所有同类型充电桩中的请求
@@ -197,7 +208,9 @@ impl Dispatcher {
         // 重新分配所有请求
         for request in all_requests {
             if let Some(best_pile) = self.select_best_pile(&request).await {
-                self.queue_manager.add_to_pile_queue(&best_pile.number, request).await?;
+                self.queue_manager
+                    .add_to_pile_queue(&best_pile.number, request)
+                    .await?;
             } else {
                 // 如果没有可用的充电桩，将请求放回等候区
                 self.queue_manager.add_to_waiting_queue(request).await?;
@@ -243,4 +256,4 @@ mod tests {
         // 停止叫号服务
         assert!(dispatcher.stop_calling().await.is_ok());
     }
-} 
+}
