@@ -1,5 +1,7 @@
-use crate::models::{ChargingRequest, ChargingMode, RequestStatus};
-use actix_web::{get, post, put, delete, web, HttpResponse, Responder};
+use std::str::FromStr;
+
+use crate::models::{ChargingMode, ChargingRequest, RequestStatus};
+use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -79,6 +81,7 @@ pub async fn create_charging_request(
     _pool: web::Data<MySqlPool>,
     payload: web::Json<CreateChargingRequestPayload>,
 ) -> impl Responder {
+
     let mut requests = CHARGING_REQUESTS.lock().unwrap();
     
     // 获取当前等待数量
@@ -103,6 +106,7 @@ pub async fn create_charging_request(
         request,
         "充电请求创建成功"
     ))
+
 }
 
 /// 修改充电模式
@@ -144,6 +148,7 @@ pub async fn update_charging_mode(
     } else {
         return HttpResponse::NotFound()
             .json(ApiResponse::<()>::error("充电请求不存在"));
+
     }
 }
 
@@ -154,6 +159,7 @@ pub async fn update_charging_amount(
     payload: web::Json<UpdateChargingAmountPayload>,
 ) -> impl Responder {
     let request_id = path.into_inner();
+
     let mut requests = CHARGING_REQUESTS.lock().unwrap();
     if let Some(request) = requests.iter_mut().find(|r| r.id == request_id) {
         match request.status {
@@ -176,6 +182,7 @@ pub async fn update_charging_amount(
     } else {
         return HttpResponse::NotFound()
             .json(ApiResponse::<()>::error("充电请求不存在"));
+
     }
 }
 
@@ -186,6 +193,7 @@ pub async fn cancel_charging_request(
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let request_id = path.into_inner();
+
     let mut requests = CHARGING_REQUESTS.lock().unwrap();
     
     // 找到并删除对应的请求
@@ -198,6 +206,7 @@ pub async fn cancel_charging_request(
     } else {
         HttpResponse::NotFound()
             .json(ApiResponse::<()>::error("充电请求不存在"))
+
     }
 }
 
@@ -210,16 +219,13 @@ pub async fn get_charging_request(
     let request_id = path.into_inner();
 
     match ChargingRequest::get_by_id(pool.get_ref(), request_id).await {
-        Ok(Some(request)) => HttpResponse::Ok().json(ApiResponse::success(
-            request,
-            "获取充电请求成功"
-        )),
-        Ok(None) => HttpResponse::NotFound()
-            .json(ApiResponse::<()>::error("充电请求不存在")),
+        Ok(Some(request)) => {
+            HttpResponse::Ok().json(ApiResponse::success(request, "获取充电请求成功"))
+        }
+        Ok(None) => HttpResponse::NotFound().json(ApiResponse::<()>::error("充电请求不存在")),
         Err(err) => {
             eprintln!("Error fetching charging request: {:?}", err);
-            HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("获取充电请求失败"))
+            HttpResponse::InternalServerError().json(ApiResponse::<()>::error("获取充电请求失败"))
         }
     }
 }
@@ -256,8 +262,7 @@ pub async fn get_charging_queue(
         "fast" | "Fast" => ChargingMode::Fast,
         "slow" | "Slow" => ChargingMode::Slow,
         _ => {
-            return HttpResponse::BadRequest()
-                .json(ApiResponse::<()>::error("无效的充电模式"));
+            return HttpResponse::BadRequest().json(ApiResponse::<()>::error("无效的充电模式"));
         }
     };
 
@@ -292,6 +297,7 @@ pub async fn get_all_charging_requests(
         requests,
         "获取所有充电请求成功"
     ))
+
 }
 
 // 配置路由
@@ -304,4 +310,4 @@ pub fn charging_request_routes(cfg: &mut web::ServiceConfig) {
         .service(get_user_charging_requests)
         .service(get_charging_queue)
         .service(get_all_charging_requests);
-} 
+}
