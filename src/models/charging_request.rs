@@ -274,6 +274,7 @@ impl ChargingRequest {
             ChargingRequest,
             r#"
             SELECT
+<<<<<<< HEAD
                 cr.id            AS "id!: Uuid",
                 cr.user_id       AS "user_id!: Uuid",
                 cr.mode          AS "mode!: ChargingMode",
@@ -285,6 +286,19 @@ impl ChargingRequest {
             FROM charging_requests AS cr
             JOIN charging_piles   AS cp ON cp.number = cr.queue_number
             WHERE cp.id    = ?
+=======
+                cr.id           AS "id!: Uuid",
+                cr.user_id      AS "user_id!: Uuid",
+                cr.mode         AS "mode!: ChargingMode",
+                CAST(cr.amount AS DOUBLE)     AS "amount!: f64",
+                cr.queue_number AS "queue_number!: String",
+                cr.status       AS "status!: RequestStatus",
+                cr.created_at   AS "created_at!: DateTime<Utc>",
+                cr.updated_at   AS "updated_at!: DateTime<Utc>"
+            FROM charging_requests cr
+            JOIN charging_piles  cp ON cp.number = cr.queue_number
+            WHERE cp.id = ?                -- 只看指定充电桩
+>>>>>>> 988848dfb69263ef83b287087150192117c961b2
             ORDER BY cr.created_at
             "#,
             pile_id,
@@ -292,6 +306,10 @@ impl ChargingRequest {
         .fetch_all(pool)
         .await
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 988848dfb69263ef83b287087150192117c961b2
 }
 
 #[cfg(test)]
