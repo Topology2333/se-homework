@@ -1,15 +1,14 @@
-pub mod queue_manager;
 pub mod dispatcher;
 mod number_generator;
+pub mod queue_manager;
 
-pub use queue_manager::QueueManager;
 pub use dispatcher::Dispatcher;
 pub use number_generator::QueueNumberGenerator;
+pub use queue_manager::QueueManager;
 
-use std::sync::Arc;
-use tokio::time::{sleep, Duration};
-use uuid::Uuid;
 use crate::models::{ChargingMode, ChargingPile, ChargingRequest};
+use std::sync::Arc;
+use uuid::Uuid;
 
 /// 调度系统
 pub struct ChargingScheduler {
@@ -40,17 +39,14 @@ impl ChargingScheduler {
     ) -> Result<ChargingRequest, String> {
         // 生成排队号码
         let queue_number = self.number_generator.generate(mode);
-        
+
         // 创建充电请求
-        let request = Arc::new(ChargingRequest::new(
-            user_id,
-            mode,
-            amount,
-            queue_number,
-        ));
+        let request = Arc::new(ChargingRequest::new(user_id, mode, amount, queue_number));
 
         // 添加到等候区
-        self.queue_manager.add_to_waiting_queue(request.clone()).await?;
+        self.queue_manager
+            .add_to_waiting_queue(request.clone())
+            .await?;
 
         Ok((*request).clone())
     }
@@ -58,7 +54,11 @@ impl ChargingScheduler {
     /// 取消充电请求
     pub async fn cancel_request(&self, request: &ChargingRequest) -> Result<(), String> {
         // 从等候区移除请求
-        if let Some(_) = self.queue_manager.remove_from_waiting_queue(request.id).await {
+        if let Some(_) = self
+            .queue_manager
+            .remove_from_waiting_queue(request.id)
+            .await
+        {
             Ok(())
         } else {
             Err("请求不存在".to_string())
@@ -88,12 +88,10 @@ mod tests {
     #[tokio::test]
     async fn test_submit_request() {
         let scheduler = ChargingScheduler::new();
-        
-        let result = scheduler.submit_request(
-            Uuid::new_v4(),
-            ChargingMode::Fast,
-            30.0,
-        ).await;
+
+        let result = scheduler
+            .submit_request(Uuid::new_v4(), ChargingMode::Fast, 30.0)
+            .await;
 
         assert!(result.is_ok());
         let request = result.unwrap();
@@ -105,13 +103,12 @@ mod tests {
     #[tokio::test]
     async fn test_cancel_request() {
         let scheduler = ChargingScheduler::new();
-        
+
         // 提交请求
-        let request = scheduler.submit_request(
-            Uuid::new_v4(),
-            ChargingMode::Fast,
-            30.0,
-        ).await.unwrap();
+        let request = scheduler
+            .submit_request(Uuid::new_v4(), ChargingMode::Fast, 30.0)
+            .await
+            .unwrap();
 
         // 取消请求
         assert!(scheduler.cancel_request(&request).await.is_ok());
@@ -120,28 +117,25 @@ mod tests {
     #[tokio::test]
     async fn test_waiting_count() {
         let scheduler = ChargingScheduler::new();
-        
+
         // 提交两个快充请求
-        scheduler.submit_request(
-            Uuid::new_v4(),
-            ChargingMode::Fast,
-            30.0,
-        ).await.unwrap();
-        
-        scheduler.submit_request(
-            Uuid::new_v4(),
-            ChargingMode::Fast,
-            30.0,
-        ).await.unwrap();
+        scheduler
+            .submit_request(Uuid::new_v4(), ChargingMode::Fast, 30.0)
+            .await
+            .unwrap();
+
+        scheduler
+            .submit_request(Uuid::new_v4(), ChargingMode::Fast, 30.0)
+            .await
+            .unwrap();
 
         // 提交一个慢充请求
-        scheduler.submit_request(
-            Uuid::new_v4(),
-            ChargingMode::Slow,
-            30.0,
-        ).await.unwrap();
+        scheduler
+            .submit_request(Uuid::new_v4(), ChargingMode::Slow, 30.0)
+            .await
+            .unwrap();
 
         assert_eq!(scheduler.get_waiting_count(ChargingMode::Fast).await, 2);
         assert_eq!(scheduler.get_waiting_count(ChargingMode::Slow).await, 1);
     }
-} 
+}

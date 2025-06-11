@@ -1,6 +1,6 @@
 pub mod charging_pile;
 mod charging_record;
-mod charging_request;
+pub mod charging_request;
 pub mod user;
 mod vehicle;
 
@@ -46,6 +46,12 @@ pub enum RequestStatus {
     Cancelled, // 已取消
 }
 
+impl PartialEq<String> for RequestStatus {
+    fn eq(&self, other: &String) -> bool {
+        self.to_string() == *other
+    }
+}
+
 impl ToString for RequestStatus {
     fn to_string(&self) -> String {
         match self {
@@ -69,6 +75,34 @@ impl FromStr for RequestStatus {
         }
     }
 }
+
+impl From<String> for RequestStatus {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "waiting" => RequestStatus::Waiting,
+            "charging" => RequestStatus::Charging,
+            "completed" => RequestStatus::Completed,
+            "cancelled" => RequestStatus::Cancelled,
+            _ => panic!("Unknown status: {}", s), // 或者返回一个默认值
+        }
+    }
+}
+
+impl From<RequestStatus> for String {
+    fn from(status: RequestStatus) -> String {
+        status.to_string()
+    }
+}
+
+// #[derive(Type, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+// #[repr(i8)]            // ← 映射到数据库 TINYINT
+// #[sqlx(type_name = "TINYINT")]   // 映射到 MySQL tinyint
+// pub enum RequestStatus {
+//     Waiting   = 0,
+//     Charging  = 1,
+//     Completed = 2,
+//     Cancelled = 3,
+// }
 
 #[cfg(test)]
 mod tests {
@@ -103,14 +137,23 @@ mod tests {
             ChargingRequest::new(Uuid::new_v4(), ChargingMode::Fast, 30.0, "F1".to_string());
 
         // 测试初始状态
-        assert_eq!(request.status, RequestStatus::Waiting);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Waiting
+        );
 
         // 测试状态转换
         request.start_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Charging);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Charging
+        );
 
         request.complete_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Completed);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Completed
+        );
     }
 
     #[test]
