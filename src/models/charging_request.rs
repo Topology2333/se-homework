@@ -292,7 +292,6 @@ impl ChargingRequest {
         .fetch_all(pool)
         .await
     }
-
 }
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 use crate::models::charging_pile::{ChargingPile, PileStatus};
-use crate::models::charging_request::{ChargingRequest};
+use crate::models::charging_request::ChargingRequest;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -21,7 +21,7 @@ pub async fn start_pile(pool: web::Data<MySqlPool>, path: web::Path<Uuid>) -> im
     let mut piles = ChargingPile::get_all(pool.get_ref())
         .await
         .unwrap_or_default();
-    
+
     if let Some(pile) = piles.iter_mut().find(|p| p.id == id) {
         // 检查充电桩状态，只有在空闲或关闭状态下才可以启动
         if pile.status == PileStatus::Shutdown {
@@ -45,7 +45,7 @@ pub async fn shutdown_pile(pool: web::Data<MySqlPool>, path: web::Path<Uuid>) ->
     let mut piles = ChargingPile::get_all(pool.get_ref())
         .await
         .unwrap_or_default();
-    
+
     if let Some(pile) = piles.iter_mut().find(|p| p.id == id) {
         // 检查充电桩状态，只有在空闲或关闭状态下才可以关闭
         if pile.status == PileStatus::Available {
