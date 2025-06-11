@@ -5,7 +5,6 @@ use crate::models::{
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 /// 调度器
 pub struct Dispatcher {
@@ -79,7 +78,7 @@ impl Dispatcher {
 
     // 为请求选择最佳充电桩
     async fn select_best_pile(&self, request: &ChargingRequest) -> Option<Arc<ChargingPile>> {
-        let mode = ChargingMode::from(request.mode.clone());
+        let mode = ChargingMode::from_str(&request.mode).unwrap();
         let available_piles = self.queue_manager.get_available_piles(mode).await;
 
         if available_piles.is_empty() {

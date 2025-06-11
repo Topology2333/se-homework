@@ -1,9 +1,11 @@
+use std::str::FromStr;
+
 use super::{FAST_CHARGING_POWER, SLOW_CHARGING_POWER};
-use serde::{Deserialize, Serialize};
-use sqlx::Type;
-use sqlx::MySqlPool;
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::MySqlPool;
+use sqlx::Type;
+use uuid::Uuid;
 // 充电模式
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "ENUM('Fast', 'Slow')", rename_all = "PascalCase")]
@@ -12,12 +14,24 @@ pub enum ChargingMode {
     Slow, // 慢充
 }
 
-impl From<String> for ChargingMode {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "Fast" => ChargingMode::Fast,
-            "Slow" => ChargingMode::Slow,
-            _ => panic!("Unknown charging mode: {}", s),
+// 实现 FromStr 以便从字符串解析
+impl FromStr for ChargingMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Fast" => Ok(Self::Fast),
+            "Slow" => Ok(Self::Slow),
+            _ => Err(format!("Invalid charging mode: {}", s)),
+        }
+    }
+}
+
+impl From<ChargingMode> for String {
+    fn from(mode: ChargingMode) -> String {
+        match mode {
+            ChargingMode::Fast => "Fast".to_string(),
+            ChargingMode::Slow => "Slow".to_string(),
         }
     }
 }
