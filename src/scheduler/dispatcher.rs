@@ -226,6 +226,7 @@ impl Dispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn test_dispatcher() {

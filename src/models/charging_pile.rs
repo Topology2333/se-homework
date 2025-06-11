@@ -27,6 +27,15 @@ impl FromStr for ChargingMode {
     }
 }
 
+impl PartialEq<ChargingMode> for String {
+    fn eq(&self, other: &ChargingMode) -> bool {
+        match other {
+            ChargingMode::Fast => self == "Fast",
+            ChargingMode::Slow => self == "Slow",
+        }
+    }
+}
+
 impl From<ChargingMode> for String {
     fn from(mode: ChargingMode) -> String {
         match mode {

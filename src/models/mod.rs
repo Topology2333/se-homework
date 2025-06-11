@@ -46,6 +46,12 @@ pub enum RequestStatus {
     Cancelled, // 已取消
 }
 
+impl PartialEq<String> for RequestStatus {
+    fn eq(&self, other: &String) -> bool {
+        self.to_string() == *other
+    }
+}
+
 impl ToString for RequestStatus {
     fn to_string(&self) -> String {
         match self {
@@ -131,14 +137,23 @@ mod tests {
             ChargingRequest::new(Uuid::new_v4(), ChargingMode::Fast, 30.0, "F1".to_string());
 
         // 测试初始状态
-        assert_eq!(request.status, RequestStatus::Waiting);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Waiting
+        );
 
         // 测试状态转换
         request.start_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Charging);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Charging
+        );
 
         request.complete_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Completed);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Completed
+        );
     }
 
     #[test]
