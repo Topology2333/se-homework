@@ -1,4 +1,3 @@
-
 pub mod charging_pile;
 mod charging_record;
 mod charging_request;
@@ -104,14 +103,14 @@ mod tests {
             ChargingRequest::new(Uuid::new_v4(), ChargingMode::Fast, 30.0, "F1".to_string());
 
         // 测试初始状态
-        assert_eq!(request.status, RequestStatus::Waiting);
+        assert_eq!(request.status, RequestStatus::Waiting.to_string());
 
         // 测试状态转换
         request.start_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Charging);
+        assert_eq!(request.status, RequestStatus::Charging.to_string());
 
         request.complete_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Completed);
+        assert_eq!(request.status, RequestStatus::Completed.to_string());
     }
 
     #[test]
@@ -127,3 +126,8 @@ mod tests {
     }
 }
 
+impl From<RequestStatus> for String {
+    fn from(status: RequestStatus) -> String {
+        status.to_string()
+    }
+}

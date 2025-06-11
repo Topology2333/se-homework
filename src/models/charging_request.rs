@@ -1,7 +1,9 @@
-use crate::models::{ChargingMode, RequestStatus};
-use chrono::{DateTime, Utc};
+use crate::models::ChargingMode;
+use crate::models::RequestStatus;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use sqlx::{MySqlPool, Type};
+use sqlx::types::chrono::DateTime;
+use sqlx::MySqlPool;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -264,6 +266,32 @@ impl ChargingRequest {
         .await?;
         Ok(())
     }
+    pub async fn get_waiting_requests(
+        pool: &MySqlPool,
+        pile_id: Uuid,
+    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
+        sqlx::query_as!(
+            ChargingRequest,
+            r#"
+            SELECT
+                cr.id            AS "id!: Uuid",
+                cr.user_id       AS "user_id!: Uuid",
+                cr.mode          AS "mode!: ChargingMode",
+                CAST(cr.amount AS DOUBLE)  AS "amount!: f64",
+                cr.queue_number  AS "queue_number!: String",
+                cr.status        AS "status!: String",
+                cr.created_at    AS "created_at!: DateTime<Utc>",
+                cr.updated_at    AS "updated_at!: DateTime<Utc>"
+            FROM charging_requests AS cr
+            JOIN charging_piles   AS cp ON cp.number = cr.queue_number
+            WHERE cp.id    = ?
+            ORDER BY cr.created_at
+            "#,
+            pile_id,
+        )
+        .fetch_all(pool)
+        .await
+    }
 }
 
 #[cfg(test)]
@@ -276,10 +304,16 @@ mod tests {
         let request = ChargingRequest::new(user_id, ChargingMode::Fast, 30.0, "F1".to_string());
 
         assert_eq!(request.user_id, user_id);
-        assert_eq!(request.mode, ChargingMode::Fast);
+        assert_eq!(
+            ChargingMode::from_str(&request.mode).unwrap(),
+            ChargingMode::Fast
+        );
         assert_eq!(request.amount, 30.0);
         assert_eq!(request.queue_number, "F1");
-        assert_eq!(request.status, RequestStatus::Waiting);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Waiting
+        );
     }
 
     #[test]
@@ -289,11 +323,17 @@ mod tests {
 
         // 开始充电
         request.start_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Charging);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Charging
+        );
 
         // 完成充电
         request.complete_charging().unwrap();
-        assert_eq!(request.status, RequestStatus::Completed);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Completed
+        );
     }
 
     #[test]
@@ -303,7 +343,10 @@ mod tests {
 
         // 等待状态下取消
         request.cancel().unwrap();
-        assert_eq!(request.status, RequestStatus::Cancelled);
+        assert_eq!(
+            RequestStatus::from_str(&request.status).unwrap(),
+            RequestStatus::Cancelled
+        );
 
         // 已取消状态下不能再取消
         assert!(request.cancel().is_err());
