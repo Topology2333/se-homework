@@ -23,7 +23,7 @@ impl Dispatcher {
     /// 为充电桩分配下一个车辆
     pub async fn dispatch_next_vehicle(&self, pile: &ChargingPile) -> Result<(), String> {
         // 获取等候区中对应模式的等待数量
-        let waiting_count = self.queue_manager.get_waiting_count(pile.mode).await;
+        let waiting_count = self.queue_manager.get_waiting_count(pile.mode).await; 
         if waiting_count == 0 {
             return Ok(());
         }

@@ -1,94 +1,105 @@
 <template>
-  <el-container style="width: 70vw; margin: 0 auto; padding: 20px; background: transparent; background-color: rgba(255, 255, 255, 0.8);">
-    <el-header style="font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px;">
+  <el-container style="width: 90vw; margin: 0 auto; padding: 20px; background: transparent; background-color: rgba(255, 255, 255, 0.9);">
+    <el-header style="font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 30px; color: #409EFF;">
       充电请求管理
     </el-header>
 
     <el-main>
-      <el-tabs v-model="activeTab" type="card">
-        <!-- 创建新请求 -->
-        <el-tab-pane label="创建充电请求" name="create">
-          <el-card shadow="hover" style="margin-bottom: 20px;">
-            <h3>新建充电请求</h3>
-            <el-form :model="newRequest" label-width="120px" style="max-width: 500px;">
-              <el-form-item label="充电模式">
-                <el-radio-group v-model="newRequest.mode">
-                  <el-radio label="Fast">快充 (30度/小时)</el-radio>
-                  <el-radio label="Slow">慢充 (7度/小时)</el-radio>
-                </el-radio-group>
-              </el-form-item>
-              <el-form-item label="充电量(度)">
-                <el-input-number v-model="newRequest.amount" :min="1" :max="100" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="createRequest" :loading="loading">提交请求</el-button>
-                <el-button @click="goBack">返回</el-button>
-              </el-form-item>
-            </el-form>
-          </el-card>
-        </el-tab-pane>
+      <!-- 创建充电请求表单 -->
+      <el-card v-if="!hasActiveRequest" shadow="hover" style="margin-bottom: 20px; border-radius: 8px;">
+        <template #header>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">新建充电请求</h3>
+            <el-button type="primary" @click="goBack" plain>返回主页</el-button>
+          </div>
+        </template>
+        <el-form :model="newRequest" label-width="120px" style="max-width: 500px; margin: 0 auto;">
+          <el-form-item label="充电模式">
+            <el-radio-group v-model="newRequest.mode">
+              <el-radio label="Fast">快充 (30度/小时)</el-radio>
+              <el-radio label="Slow">慢充 (7度/小时)</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="充电量(度)">
+            <el-input-number v-model="newRequest.amount" :min="1" :max="100" :step="1" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="createRequest" :loading="loading" style="width: 120px;">提交请求</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-        <!-- 我的请求 -->
-        <el-tab-pane label="我的请求" name="my-requests">
-          <el-card shadow="hover" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-              <h3>我的充电请求</h3>
-              <el-button @click="loadMyRequests" icon="Refresh" circle></el-button>
+      <!-- 当前充电请求信息 -->
+      <template v-if="hasActiveRequest">
+        <el-card shadow="hover" style="margin-bottom: 20px; border-radius: 8px;">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="margin: 0;">当前充电请求</h3>
+              <div>
+                <el-button type="primary" @click="goBack" plain>返回主页</el-button>
+              </div>
             </div>
-            
-            <el-table :data="myRequests" style="width: 100%" v-loading="loading">
-              <el-table-column prop="queue_number" label="排队号" width="100" />
-              <el-table-column prop="mode" label="充电模式" width="100">
-                <template #default="scope">
-                  {{ scope.row.mode === 'Fast' ? '快充' : '慢充' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="amount" label="充电量(度)" width="120" />
-              <el-table-column prop="status" label="状态" width="100">
-                <template #default="scope">
-                  <el-tag :type="getStatusType(scope.row.status)">
-                    {{ getStatusText(scope.row.status) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="created_at" label="创建时间" width="180">
-                <template #default="scope">
-                  {{ formatDate(scope.row.created_at) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="250">
-                <template #default="scope">
-                  <el-button-group>
-                    <el-button 
-                      size="small" 
-                      @click="editRequest(scope.row)"
-                      :disabled="scope.row.status !== 'Waiting'"
-                      type="primary"
-                    >
-                      修改
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      @click="cancelRequest(scope.row.id)"
-                      :disabled="scope.row.status === 'Completed' || scope.row.status === 'Cancelled'"
-                      type="danger"
-                    >
-                      取消
-                    </el-button>
-                  </el-button-group>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-card>
-        </el-tab-pane>
+          </template>
+          
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="排队号">{{ currentRequest.queue_number }}</el-descriptions-item>
+            <el-descriptions-item label="充电模式">
+              <el-tag :type="currentRequest.mode === 'Fast' ? 'danger' : 'success'">
+                {{ currentRequest.mode === 'Fast' ? '快充' : '慢充' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="充电量">{{ currentRequest.amount }}度</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="getStatusType(currentRequest.status)">
+                {{ getStatusText(currentRequest.status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间" :span="2">
+              {{ formatDate(currentRequest.created_at) }}
+            </el-descriptions-item>
+          </el-descriptions>
 
-        <!-- 充电队列 -->
-        <el-tab-pane label="充电队列" name="queue">
+          <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+            <el-button 
+              type="primary" 
+              @click="editRequest(currentRequest)"
+              :disabled="currentRequest.status !== 'Waiting'"
+            >
+              修改请求
+            </el-button>
+            <el-button 
+              type="danger" 
+              @click="cancelRequest(currentRequest.id)"
+              :disabled="currentRequest.status === 'Completed' || currentRequest.status === 'Cancelled'"
+            >
+              取消请求
+            </el-button>
+          </div>
+        </el-card>
+
+        <!-- 排队信息 -->
+        <el-card shadow="hover" style="border-radius: 8px;">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="margin: 0;">排队信息</h3>
+              <el-switch
+                v-model="autoRefresh"
+                active-text="自动刷新"
+                style="margin-right: 10px;"
+              />
+            </div>
+          </template>
+
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-card shadow="hover">
-                <h3>快充队列</h3>
-                <el-table :data="fastQueue" style="width: 100%" size="small">
+              <el-card shadow="hover" style="border-radius: 8px;">
+                <template #header>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0;">快充队列</h4>
+                    <el-tag type="danger">30度/小时</el-tag>
+                  </div>
+                </template>
+                <el-table :data="fastQueue" style="width: 100%" size="small" border stripe>
                   <el-table-column prop="queue_number" label="排队号" width="80" />
                   <el-table-column prop="amount" label="充电量" width="80" />
                   <el-table-column prop="created_at" label="排队时间" min-width="120">
@@ -100,9 +111,14 @@
               </el-card>
             </el-col>
             <el-col :span="12">
-              <el-card shadow="hover">
-                <h3>慢充队列</h3>
-                <el-table :data="slowQueue" style="width: 100%" size="small">
+              <el-card shadow="hover" style="border-radius: 8px;">
+                <template #header>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0;">慢充队列</h4>
+                    <el-tag type="success">7度/小时</el-tag>
+                  </div>
+                </template>
+                <el-table :data="slowQueue" style="width: 100%" size="small" border stripe>
                   <el-table-column prop="queue_number" label="排队号" width="80" />
                   <el-table-column prop="amount" label="充电量" width="80" />
                   <el-table-column prop="created_at" label="排队时间" min-width="120">
@@ -114,29 +130,34 @@
               </el-card>
             </el-col>
           </el-row>
-        </el-tab-pane>
-      </el-tabs>
+        </el-card>
+      </template>
     </el-main>
 
     <!-- 修改请求对话框 -->
-    <el-dialog v-model="editDialogVisible" title="修改充电请求" width="500px">
-      <el-form :model="editForm" label-width="120px">
-        <el-form-item label="充电模式">
+    <el-dialog 
+      v-model="editDialogVisible" 
+      title="修改充电请求" 
+      width="500px" 
+      destroy-on-close
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+    >
+      <el-form :model="editForm" label-width="120px" :rules="rules" ref="editFormRef">
+        <el-form-item label="充电模式" prop="mode">
           <el-radio-group v-model="editForm.mode">
             <el-radio label="Fast">快充 (30度/小时)</el-radio>
             <el-radio label="Slow">慢充 (7度/小时)</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="充电量(度)">
-          <el-input-number v-model="editForm.amount" :min="1" :max="100" />
+        <el-form-item label="充电量(度)" prop="amount">
+          <el-input-number v-model="editForm.amount" :min="1" :max="100" :step="1" />
         </el-form-item>
       </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="updateRequest" :loading="loading">确定</el-button>
-        </span>
-      </template>
+      <div class="dialog-footer" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="updateRequest" :loading="loading" style="width: 120px;">确认修改</el-button>
+      </div>
     </el-dialog>
   </el-container>
 </template>
@@ -149,9 +170,10 @@ export default {
   name: 'ChargingRequest',
   data() {
     return {
-      activeTab: 'my-requests',
       loading: false,
       user: null,
+      autoRefresh: false,
+      refreshInterval: null,
       
       // 新建请求表单
       newRequest: {
@@ -159,8 +181,19 @@ export default {
         amount: 30
       },
       
-      // 我的请求列表
-      myRequests: [],
+      // 表单验证规则
+      rules: {
+        mode: [
+          { required: true, message: '请选择充电模式', trigger: 'change' }
+        ],
+        amount: [
+          { required: true, message: '请输入充电量', trigger: 'blur' },
+          { type: 'number', min: 1, max: 100, message: '充电量必须在1-100度之间', trigger: 'blur' }
+        ]
+      },
+      
+      // 当前请求
+      currentRequest: null,
       
       // 充电队列
       fastQueue: [],
@@ -177,6 +210,14 @@ export default {
     }
   },
   
+  computed: {
+    hasActiveRequest() {
+      return this.currentRequest && 
+             this.currentRequest.status !== 'Completed' && 
+             this.currentRequest.status !== 'Cancelled'
+    }
+  },
+  
   created() {
     // 获取用户信息
     const user = JSON.parse(localStorage.getItem('user'))
@@ -187,11 +228,62 @@ export default {
     this.user = user
     
     // 加载数据
-    this.loadMyRequests()
+    this.loadCurrentRequest()
     this.loadQueues()
+  },
+
+  beforeUnmount() {
+    // 清除自动刷新定时器
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval)
+    }
+  },
+  
+  watch: {
+    autoRefresh(newVal) {
+      if (newVal) {
+        this.refreshInterval = setInterval(() => {
+          this.loadCurrentRequest()
+          this.loadQueues()
+        }, 5000) // 每5秒刷新一次
+      } else {
+        if (this.refreshInterval) {
+          clearInterval(this.refreshInterval)
+          this.refreshInterval = null
+        }
+      }
+    }
   },
   
   methods: {
+    // 加载当前用户的充电请求
+    async loadCurrentRequest() {
+      if (!this.user) {
+        ElMessage.warning('请先登录')
+        return
+      }
+      
+      this.loading = true
+      try {
+        const response = await axios.get(`http://localhost:8080/users/${this.user.id}/charging-requests`)
+        
+        if (response.data.success) {
+          const requests = response.data.data
+          // 找到未完成的请求
+          this.currentRequest = requests.find(r => 
+            r.status !== 'Completed' && r.status !== 'Cancelled'
+          ) || null
+        } else {
+          ElMessage.error(response.data.message || '加载请求失败')
+        }
+      } catch (error) {
+        console.error('加载请求失败:', error)
+        ElMessage.error(error.response?.data?.message || '加载请求失败，请稍后重试')
+      } finally {
+        this.loading = false
+      }
+    },
+    
     // 创建充电请求
     async createRequest() {
       if (!this.user) return
@@ -207,33 +299,14 @@ export default {
         if (response.data.success) {
           ElMessage.success('充电请求创建成功！')
           this.newRequest = { mode: 'Fast', amount: 30 }
-          this.activeTab = 'my-requests'
-          this.loadMyRequests()
+          this.loadCurrentRequest()
           this.loadQueues()
         } else {
           ElMessage.error(response.data.message || '创建失败')
         }
       } catch (error) {
         console.error('创建请求失败:', error)
-        ElMessage.error('创建请求失败')
-      } finally {
-        this.loading = false
-      }
-    },
-    
-    // 加载我的请求
-    async loadMyRequests() {
-      if (!this.user) return
-      
-      this.loading = true
-      try {
-        const response = await axios.get(`http://localhost:8080/users/${this.user.id}/charging-requests`)
-        if (response.data.success) {
-          this.myRequests = response.data.data
-        }
-      } catch (error) {
-        console.error('加载请求失败:', error)
-        ElMessage.error('加载请求失败')
+        ElMessage.error(error.response?.data?.message || '创建请求失败，请稍后重试')
       } finally {
         this.loading = false
       }
@@ -248,13 +321,20 @@ export default {
         ])
         
         if (fastResponse.data.success) {
-          this.fastQueue = fastResponse.data.data
+          // 确保快充队列按创建时间排序
+          this.fastQueue = fastResponse.data.data.sort((a, b) => 
+            new Date(a.created_at) - new Date(b.created_at)
+          );
         }
         if (slowResponse.data.success) {
-          this.slowQueue = slowResponse.data.data
+          // 确保慢充队列按创建时间排序
+          this.slowQueue = slowResponse.data.data.sort((a, b) => 
+            new Date(a.created_at) - new Date(b.created_at)
+          );
         }
       } catch (error) {
         console.error('加载队列失败:', error)
+        ElMessage.error('加载队列失败，请稍后重试')
       }
     },
     
@@ -271,19 +351,26 @@ export default {
     
     // 更新请求
     async updateRequest() {
+      if (!this.$refs.editFormRef) return
+      
+      try {
+        await this.$refs.editFormRef.validate()
+      } catch (error) {
+        return
+      }
+      
       this.loading = true
       try {
         // 如果模式改变了，需要调用修改模式接口
         if (this.editForm.mode !== this.editForm.originalMode) {
           await axios.put(`http://localhost:8080/charging-requests/${this.editForm.id}/mode`, {
             mode: this.editForm.mode,
-            queue_number: '' // 后端会重新生成
+            queue_number: ''
           })
         }
         
         // 如果充电量改变了，需要调用修改充电量接口
-        const originalRequest = this.myRequests.find(r => r.id === this.editForm.id)
-        if (this.editForm.amount !== originalRequest.amount) {
+        if (this.editForm.amount !== this.currentRequest.amount) {
           await axios.put(`http://localhost:8080/charging-requests/${this.editForm.id}/amount`, {
             amount: this.editForm.amount
           })
@@ -291,11 +378,11 @@ export default {
         
         ElMessage.success('修改成功！')
         this.editDialogVisible = false
-        this.loadMyRequests()
+        this.loadCurrentRequest()
         this.loadQueues()
       } catch (error) {
         console.error('修改失败:', error)
-        ElMessage.error('修改失败')
+        ElMessage.error(error.response?.data?.message || '修改失败，请稍后重试')
       } finally {
         this.loading = false
       }
@@ -315,7 +402,7 @@ export default {
         
         if (response.data.success) {
           ElMessage.success('请求已取消')
-          this.loadMyRequests()
+          this.loadCurrentRequest()
           this.loadQueues()
         } else {
           ElMessage.error(response.data.message || '取消失败')
@@ -323,7 +410,7 @@ export default {
       } catch (error) {
         if (error !== 'cancel') {
           console.error('取消请求失败:', error)
-          ElMessage.error('取消请求失败')
+          ElMessage.error(error.response?.data?.message || '取消请求失败，请稍后重试')
         }
       } finally {
         this.loading = false
@@ -366,27 +453,57 @@ export default {
 </script>
 
 <style scoped>
-h3 {
+h3, h4 {
   margin-bottom: 15px;
   color: #303133;
 }
 
 .el-card {
   border-radius: 8px;
+  transition: all 0.3s;
 }
 
-.el-tabs {
-  background: transparent;
+.el-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .dialog-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+  padding: 20px 0 0 0;
+  min-height: 60px;
+  background: #fff;
+  z-index: 10;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 20px;
+  border-top: 1px solid #e4e7ed;
+}
+
+:deep(.el-dialog__body) {
+  padding: 20px;
 }
 
 .el-table {
   border-radius: 4px;
   overflow: hidden;
+}
+
+.el-button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.el-tag {
+  margin-right: 8px;
+}
+
+.el-descriptions {
+  margin: 20px 0;
 }
 </style> 

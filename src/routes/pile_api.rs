@@ -1,9 +1,5 @@
 use crate::models::charging_pile::{ChargingPile, PileStatus};
-<<<<<<< HEAD
-use crate::models::charging_request::ChargingRequest;
-=======
-use crate::models::charging_request::{ChargingRequest};
->>>>>>> 988848dfb69263ef83b287087150192117c961b2
+use crate::models::ChargingRequest;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use sqlx::MySqlPool;
 use uuid::Uuid;
@@ -86,8 +82,4 @@ pub fn pile_routes(cfg: &mut web::ServiceConfig) {
         .service(start_pile)
         .service(shutdown_pile)
         .service(get_waiting_requests);
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 988848dfb69263ef83b287087150192117c961b2

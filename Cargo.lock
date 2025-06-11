@@ -445,6 +445,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "env_logger",
+ "lazy_static",
  "log",
  "parking_lot",
  "serde",
