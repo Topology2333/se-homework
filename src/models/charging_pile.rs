@@ -1,19 +1,95 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use super::{ChargingMode, PileStatus, FAST_CHARGING_POWER, SLOW_CHARGING_POWER};
+use std::str::FromStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+use super::{FAST_CHARGING_POWER, SLOW_CHARGING_POWER};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::MySqlPool;
+use sqlx::Type;
+use uuid::Uuid;
+// 充电模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "ENUM('Fast', 'Slow')", rename_all = "PascalCase")]
+pub enum ChargingMode {
+    Fast, // 快充
+    Slow, // 慢充
+}
+
+// 实现 FromStr 以便从字符串解析
+impl FromStr for ChargingMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Fast" => Ok(Self::Fast),
+            "Slow" => Ok(Self::Slow),
+            _ => Err(format!("Invalid charging mode: {}", s)),
+        }
+    }
+}
+
+impl PartialEq<ChargingMode> for String {
+    fn eq(&self, other: &ChargingMode) -> bool {
+        match other {
+            ChargingMode::Fast => self == "Fast",
+            ChargingMode::Slow => self == "Slow",
+        }
+    }
+}
+
+impl From<ChargingMode> for String {
+    fn from(mode: ChargingMode) -> String {
+        match mode {
+            ChargingMode::Fast => "Fast".to_string(),
+            ChargingMode::Slow => "Slow".to_string(),
+        }
+    }
+}
+
+// 充电桩状态
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[sqlx(
+    type_name = "ENUM('Available', 'Charging', 'Shutdown', 'Fault')",
+    rename_all = "PascalCase"
+)]
+pub enum PileStatus {
+    Available, // 空闲
+    Charging,  // 充电中
+    Fault,     // 故障
+    Shutdown,  // 关机
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ChargingPile {
-    pub id: Uuid,                    // 充电桩ID
-    pub number: String,             // 充电桩编号
-    pub mode: ChargingMode,          // 充电模式
-    pub status: PileStatus,          // 当前状态
-    pub total_charge_count: u32,     // 累计充电次数
-    pub total_charge_time: f64,      // 累计充电时长（小时）
-    pub total_charge_amount: f64,    // 累计充电量（度）
-    pub total_charging_fee: f64,     // 累计充电费用
-    pub total_service_fee: f64,      // 累计服务费用
-    pub started_at: Option<chrono::DateTime<chrono::Utc>>,  // 启动时间
+    pub id: Uuid,                                          // 充电桩ID
+    pub number: String,                                    // 充电桩编号
+    pub mode: ChargingMode,                                // 充电模式
+    pub status: PileStatus,                                // 当前状态
+    pub total_charge_count: i32,                           // 累计充电次数
+    pub total_charge_time: f64,                            // 累计充电时长（小时）
+    pub total_charge_amount: f64,                          // 累计充电量（度）
+    pub total_charging_fee: f64,                           // 累计充电费用
+    pub total_service_fee: f64,                            // 累计服务费用
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>, // 启动时间
+}
+
+impl ToString for ChargingMode {
+    fn to_string(&self) -> String {
+        match self {
+            ChargingMode::Fast => "Fast".to_string(),
+            ChargingMode::Slow => "Slow".to_string(),
+        }
+    }
+}
+
+impl ToString for PileStatus {
+    fn to_string(&self) -> String {
+        match self {
+            PileStatus::Available => "Available".to_string(),
+            PileStatus::Charging => "Charging".to_string(),
+            PileStatus::Shutdown => "Shutdown".to_string(),
+            PileStatus::Fault => "Fault".to_string(),
+        }
+    }
 }
 
 impl ChargingPile {
@@ -30,6 +106,46 @@ impl ChargingPile {
             total_service_fee: 0.0,
             started_at: None,
         }
+    }
+
+    pub async fn get_all(pool: &MySqlPool) -> Result<Vec<ChargingPile>, sqlx::Error> {
+        let piles = sqlx::query_as!(
+            ChargingPile,
+            r#"
+        SELECT 
+            id as "id: Uuid",
+            number,
+            mode as "mode: ChargingMode",
+            status as "status: PileStatus",
+            total_charge_count,
+            total_charge_time,
+            total_charge_amount,
+            total_charging_fee,
+            total_service_fee,
+            started_at as "started_at: DateTime<Utc>"
+        FROM charging_piles
+        "#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(piles)
+    }
+
+    pub async fn update_status(&self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            UPDATE charging_piles
+            SET status = ?, started_at = ?
+            WHERE id = ?
+            "#,
+            self.status.to_string(),
+            self.started_at,
+            self.id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     pub fn get_power(&self) -> f64 {
@@ -121,11 +237,11 @@ mod tests {
     #[test]
     fn test_charging_cycle() {
         let mut pile = ChargingPile::new("C1".to_string(), ChargingMode::Fast);
-        
+
         // 开始充电
         pile.start_charging().unwrap();
         assert_eq!(pile.status, PileStatus::Charging);
-        
+
         // 结束充电
         pile.stop_charging(2.5, 75.0).unwrap();
         assert_eq!(pile.status, PileStatus::Available);
@@ -137,11 +253,11 @@ mod tests {
     #[test]
     fn test_fault_handling() {
         let mut pile = ChargingPile::new("C1".to_string(), ChargingMode::Fast);
-        
+
         // 报告故障
         pile.report_fault();
         assert_eq!(pile.status, PileStatus::Fault);
-        
+
         // 修复故障
         pile.repair().unwrap();
         assert_eq!(pile.status, PileStatus::Available);
@@ -150,13 +266,13 @@ mod tests {
     #[test]
     fn test_power_management() {
         let mut pile = ChargingPile::new("C1".to_string(), ChargingMode::Fast);
-        
+
         // 关机
         pile.shutdown().unwrap();
         assert_eq!(pile.status, PileStatus::Shutdown);
-        
+
         // 开机
         pile.startup().unwrap();
         assert_eq!(pile.status, PileStatus::Available);
     }
-} 
+}

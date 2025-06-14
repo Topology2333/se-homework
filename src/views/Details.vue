@@ -175,7 +175,8 @@ export default {
 
     // 计算筛选后的记录
     const filteredRecords = computed(() => {
-      let result = [...allChargingRecords.value];
+      // 先按开始时间从晚到早排序
+      let result = [...allChargingRecords.value].sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
       
       // 按充电桩编号筛选
       if (searchParams.value.pile_number) {

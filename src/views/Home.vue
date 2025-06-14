@@ -34,21 +34,22 @@ export default {
       password: ''
     }
   }),
+	// add console message
   methods: {
     async login() {
       try {
+				console.log('尝试登录，用户名:', this.form.username)
         const response = await axios.post('http://localhost:8080/login', {
           username: this.form.username,
           password: this.form.password
         })
+				console.log('登录成功，响应数据:', response.data)
         
-        // 存储用户信息到localStorage
-        localStorage.setItem('user', JSON.stringify({
-          id: response.data.id,
-          username: response.data.username
-        }))
-        
+				const user = response.data;
+        console.log('登录成功，用户信息：', user);
+        localStorage.setItem('user', JSON.stringify(user));
         this.$router.push('/main')
+                
       } catch (error) {
         alert('登录失败')
       }

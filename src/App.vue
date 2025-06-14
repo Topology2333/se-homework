@@ -14,11 +14,12 @@
         style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0;">
         <el-menu-item index="main">主页</el-menu-item>
         <el-menu-item index="request">用户请求</el-menu-item>
+        <el-menu-item v-if="isAdmin" index="admin">管理员</el-menu-item>
 
-              <!-- 底部退出按钮 -->
-      <div style="margin-top: 20vh;padding: 20px; text-align: center; border-top: 1px solid #eee;">
-        <el-button type="danger" @click="logout" style="width: 100%;">退出</el-button>
-      </div>
+        <!-- 底部退出按钮 -->
+        <div style="margin-top: 20vh;padding: 20px; text-align: center; border-top: 1px solid #eee;">
+          <el-button type="danger" @click="logout" style="width: 100%;">退出</el-button>
+        </div>
       </el-menu>
 
 
@@ -35,7 +36,8 @@
 export default {
   data() {
     return {
-      activeMenu: this.$route.path // 初始设置激活菜单项
+      activeMenu: this.$route.path, // 初始设置激活菜单项
+      isAdmin: false
     };
   },
   methods: {
@@ -44,24 +46,35 @@ export default {
       this.$router.push({ path: `/${index}` });
     },
     logout() {
-      // 清理登录状态示例
-      // localStorage.removeItem('token');
-      // 跳转登录页
+      this.isAdmin = false;     //防止客户在刷新页面访问到admin
       this.$router.push('/home');
+    },
+    checkAdminStatus() {
+      const user = JSON.parse(localStorage.getItem('user'));
+			console.log('从 localStorage 获取的用户信息:', user);
+      if (user && user.is_admin) {
+        this.isAdmin = true; // 如果是管理员，更新 isAdmin 状态
+      } else {
+        this.isAdmin = false; // 否则设置为 false
+      }
     }
   },
   computed: {
     showSidebar() {
       // 登录页不显示侧边栏，假设登录页路径为 "/login"
       return this.$route.path !== '/home' && this.$route.path !== '/register'
-    }
+    },
   },
   watch: {
     '$route.path'(newPath) {
       // 更新菜单的选中状态
       this.activeMenu = newPath.replace('/', '');
     }
-  }
+  },
+  mounted() {
+    // 页面加载时就通过 localStorage 判断是否为管理员
+    this.checkAdminStatus();
+  },
 };
 </script>
 
