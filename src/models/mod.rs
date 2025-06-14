@@ -25,8 +25,8 @@ pub enum TimeSlotType {
 // 系统常量
 pub const WAITING_AREA_CAPACITY: usize = 6; // 等候区容量
 pub const FAST_CHARGING_PILES: usize = 2; // 快充桩数量
-pub const SLOW_CHARGING_PILES: usize = 4; // 慢充桩数量
-pub const PILE_QUEUE_CAPACITY: usize = 2; // 每个充电桩队列容量
+pub const SLOW_CHARGING_PILES: usize = 3; // 慢充桩数量
+pub const PILE_QUEUE_CAPACITY: usize = 1; // 每个充电桩队列容量 (1个充电中，1个排队中)
 pub const FAST_CHARGING_POWER: f64 = 30.0; // 快充功率（度/小时）
 pub const SLOW_CHARGING_POWER: f64 = 7.0; // 慢充功率（度/小时）
 pub const SERVICE_FEE_RATE: f64 = 0.8; // 服务费率（元/度）
@@ -40,7 +40,8 @@ pub const VALLEY_PRICE: f64 = 0.4; // 谷时电价
 #[sqlx(type_name = "VARCHAR")]
 #[sqlx(rename_all = "lowercase")]
 pub enum RequestStatus {
-    Waiting,   // 等待中
+    Waiting,   // 在等待区等待
+    Queued,    // 在充电桩队列中等待
     Charging,  // 充电中
     Completed, // 已完成
     Cancelled, // 已取消
@@ -50,6 +51,7 @@ impl ToString for RequestStatus {
     fn to_string(&self) -> String {
         match self {
             RequestStatus::Waiting => "Waiting".to_string(),
+            RequestStatus::Queued => "Queued".to_string(),
             RequestStatus::Charging => "Charging".to_string(),
             RequestStatus::Completed => "Completed".to_string(),
             RequestStatus::Cancelled => "Cancelled".to_string(),
@@ -60,12 +62,13 @@ impl ToString for RequestStatus {
 impl FromStr for RequestStatus {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "waiting" => Ok(RequestStatus::Waiting),
-            "charging" => Ok(RequestStatus::Charging),
-            "completed" => Ok(RequestStatus::Completed),
-            "cancelled" => Ok(RequestStatus::Cancelled),
-            _ => Err("Invalid RequestStatus".to_string()),
+        match s {
+            "Waiting" | "waiting" => Ok(RequestStatus::Waiting),
+            "Queued" | "queued" => Ok(RequestStatus::Queued),
+            "Charging" | "charging" => Ok(RequestStatus::Charging),
+            "Completed" | "completed" => Ok(RequestStatus::Completed),
+            "Cancelled" | "cancelled" => Ok(RequestStatus::Cancelled),
+            _ => Err(format!("Invalid RequestStatus: {}", s)),
         }
     }
 }

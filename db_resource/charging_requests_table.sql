@@ -20,39 +20,38 @@ CREATE TABLE `charging_requests` (
 
 
 SET FOREIGN_KEY_CHECKS = 0;
---暂时改变外键约束
 INSERT INTO charging_requests
         (id, user_id, mode, amount, queue_number, status, created_at)
 VALUES
 -- F1 ------------------------------------------------------------------------
 (UNHEX(REPLACE('11111111-1111-4111-8111-111111111111','-','')),
  UNHEX(REPLACE('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','-','')),
- 'fast',  30.00, 'F1', 'waiting',  NOW()),
+ 'Fast',  30.00, 'F1', 'waiting',  NOW()),
 (UNHEX(REPLACE('22222222-2222-4222-8222-222222222222','-','')),
  UNHEX(REPLACE('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','-','')),
- 'fast',  35.50, 'F1', 'charging', NOW()),
+ 'Fast',  35.50, 'F1', 'charging', NOW()),
 
 -- F2 ------------------------------------------------------------------------
 (UNHEX(REPLACE('33333333-3333-4333-8333-333333333333','-','')),
  UNHEX(REPLACE('cccccccc-cccc-4ccc-8ccc-cccccccccccc','-','')),
- 'fast',  45.25, 'F2', 'completed', NOW()),
+ 'Fast',  45.25, 'F2', 'completed', NOW()),
 (UNHEX(REPLACE('44444444-4444-4444-8444-444444444444','-','')),
  UNHEX(REPLACE('dddddddd-dddd-4ddd-8ddd-dddddddddddd','-','')),
- 'fast',  40.00, 'F2', 'cancelled', NOW()),
+ 'Fast',  40.00, 'F2', 'cancelled', NOW()),
 
 -- S1 ------------------------------------------------------------------------
 (UNHEX(REPLACE('55555555-5555-4555-8555-555555555555','-','')),
  UNHEX(REPLACE('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','-','')),
- 'slow',  20.00, 'S1', 'waiting',  NOW()),
+ 'Slow',  20.00, 'S1', 'waiting',  NOW()),
 
 -- S2 ------------------------------------------------------------------------
 (UNHEX(REPLACE('66666666-6666-4666-8666-666666666666','-','')),
  UNHEX(REPLACE('ffffffff-ffff-4fff-8fff-ffffffffffff','-','')),
- 'slow',  22.00, 'S2', 'charging', NOW()),
+ 'Slow',  22.00, 'S2', 'charging', NOW()),
 
 -- S3 ------------------------------------------------------------------------
 (UNHEX(REPLACE('77777777-7777-4777-8777-777777777777','-','')),
  UNHEX(REPLACE('99999999-9999-4999-8999-999999999999','-','')),
- 'slow',  18.75, 'S3', 'waiting',  NOW());
+ 'Slow',  18.75, 'S3', 'waiting',  NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;

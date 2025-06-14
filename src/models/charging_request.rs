@@ -80,218 +80,216 @@ impl ChargingRequest {
         self.updated_at = Utc::now();
     }
 
-    // 数据库操作方法
-    /// 创建新的充电请求
-    pub async fn create(&self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            INSERT INTO charging_requests (id, user_id, mode, amount, queue_number, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            "#,
-            self.id,
-            self.user_id,
-            self.mode.to_string(),
-            self.amount,
-            self.queue_number,
-            self.status.to_string(),
-            self.created_at,
-            self.updated_at
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
+    // pub async fn create(&self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+    //     sqlx::query!(
+    //         r#"
+    //         INSERT INTO charging_requests (id, user_id, mode, amount, queue_number, status, created_at, updated_at)
+    //         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    //         "#,
+    //         self.id,
+    //         self.user_id,
+    //         self.mode.to_string(),
+    //         self.amount,
+    //         self.queue_number,
+    //         self.status.to_string(),
+    //         self.created_at,
+    //         self.updated_at
+    //     )
+    //     .execute(pool)
+    //     .await?;
+    //     Ok(())
+    // }
 
-    /// 根据ID查询充电请求
-    pub async fn get_by_id(
-        pool: &MySqlPool,
-        id: Uuid,
-    ) -> Result<Option<ChargingRequest>, sqlx::Error> {
-        sqlx::query_as::<_, ChargingRequest>(
-            r#"
-            SELECT 
-                id,
-                user_id,
-                mode,
-                amount,
-                queue_number,
-                status,
-                created_at,
-                updated_at
-            FROM charging_requests
-            WHERE id = ?
-            "#,
-        )
-        .bind(id.to_string())
-        .fetch_optional(pool)
-        .await
-    }
+    // /// 根据ID查询充电请求
+    // pub async fn get_by_id(
+    //     pool: &MySqlPool,
+    //     id: Uuid,
+    // ) -> Result<Option<ChargingRequest>, sqlx::Error> {
+    //     sqlx::query_as::<_, ChargingRequest>(
+    //         r#"
+    //         SELECT 
+    //             id,
+    //             user_id,
+    //             mode,
+    //             amount,
+    //             queue_number,
+    //             status,
+    //             created_at,
+    //             updated_at
+    //         FROM charging_requests
+    //         WHERE id = ?
+    //         "#,
+    //     )
+    //     .bind(id.to_string())
+    //     .fetch_optional(pool)
+    //     .await
+    // }
 
-    /// 根据用户ID查询充电请求
-    pub async fn get_by_user_id(
-        pool: &MySqlPool,
-        user_id: Uuid,
-    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        sqlx::query_as::<_, ChargingRequest>(
-            r#"
-            SELECT 
-                id,
-                user_id,
-                mode,
-                amount,
-                queue_number,
-                status,
-                created_at,
-                updated_at
-            FROM charging_requests
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            "#,
-        )
-        .bind(user_id.to_string())
-        .fetch_all(pool)
-        .await
-    }
+    // /// 根据用户ID查询充电请求
+    // pub async fn get_by_user_id(
+    //     pool: &MySqlPool,
+    //     user_id: Uuid,
+    // ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
+    //     sqlx::query_as::<_, ChargingRequest>(
+    //         r#"
+    //         SELECT 
+    //             id,
+    //             user_id,
+    //             mode,
+    //             amount,
+    //             queue_number,
+    //             status,
+    //             created_at,
+    //             updated_at
+    //         FROM charging_requests
+    //         WHERE user_id = ?
+    //         ORDER BY created_at DESC
+    //         "#,
+    //     )
+    //     .bind(user_id.to_string())
+    //     .fetch_all(pool)
+    //     .await
+    // }
 
-    /// 获取指定状态的充电请求
-    pub async fn get_by_status(
-        pool: &MySqlPool,
-        status: RequestStatus,
-    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        sqlx::query_as::<_, ChargingRequest>(
-            r#"
-        SELECT 
-            id,
-            user_id,
-            mode,
-            amount,
-            queue_number,
-            status,
-            created_at,
-            updated_at
-        FROM charging_requests
-        WHERE status = ?
-        ORDER BY created_at ASC
-        "#,
-        )
-        .bind(status.to_string()) // ✅ 将枚举转换为字符串再绑定
-        .fetch_all(pool)
-        .await
-    }
+    // /// 获取指定状态的充电请求
+    // pub async fn get_by_status(
+    //     pool: &MySqlPool,
+    //     status: RequestStatus,
+    // ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
+    //     sqlx::query_as::<_, ChargingRequest>(
+    //         r#"
+    //     SELECT 
+    //         id,
+    //         user_id,
+    //         mode,
+    //         amount,
+    //         queue_number,
+    //         status,
+    //         created_at,
+    //         updated_at
+    //     FROM charging_requests
+    //     WHERE status = ?
+    //     ORDER BY created_at ASC
+    //     "#,
+    //     )
+    //     .bind(status.to_string()) // ✅ 将枚举转换为字符串再绑定
+    //     .fetch_all(pool)
+    //     .await
+    // }
 
-    /// 获取指定模式和状态的充电请求队列
-    pub async fn get_queue(
-        pool: &MySqlPool,
-        mode: ChargingMode,
-        status: RequestStatus,
-    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        sqlx::query_as::<_, ChargingRequest>(
-            r#"
-        SELECT
-            id,
-            user_id,
-            mode,
-            amount,
-            queue_number,
-            status,
-            created_at,
-            updated_at
-        FROM charging_requests
-        WHERE mode = ? AND status = ?
-        ORDER BY created_at ASC
-        "#,
-        )
-        .bind(mode.to_string())
-        .bind(status.to_string())
-        .fetch_all(pool)
-        .await
-    }
+    // /// 获取指定模式和状态的充电请求队列
+    // pub async fn get_queue(
+    //     pool: &MySqlPool,
+    //     mode: ChargingMode,
+    //     status: RequestStatus,
+    // ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
+    //     sqlx::query_as::<_, ChargingRequest>(
+    //         r#"
+    //     SELECT
+    //         id,
+    //         user_id,
+    //         mode,
+    //         amount,
+    //         queue_number,
+    //         status,
+    //         created_at,
+    //         updated_at
+    //     FROM charging_requests
+    //     WHERE mode = ? AND status = ?
+    //     ORDER BY created_at ASC
+    //     "#,
+    //     )
+    //     .bind(mode.to_string())
+    //     .bind(status.to_string())
+    //     .fetch_all(pool)
+    //     .await
+    // }
 
-    /// 更新充电请求状态
-    pub async fn update_status(
-        &mut self,
-        pool: &MySqlPool,
-        new_status: RequestStatus,
-    ) -> Result<(), sqlx::Error> {
-        self.status = new_status.to_string();
-        self.updated_at = Utc::now();
+    // /// 更新充电请求状态
+    // pub async fn update_status(
+    //     &mut self,
+    //     pool: &MySqlPool,
+    //     new_status: RequestStatus,
+    // ) -> Result<(), sqlx::Error> {
+    //     self.status = new_status.to_string();
+    //     self.updated_at = Utc::now();
 
-        sqlx::query!(
-            r#"
-            UPDATE charging_requests
-            SET status = ?, updated_at = ?
-            WHERE id = ?
-            "#,
-            self.status.to_string(),
-            self.updated_at,
-            self.id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
+    //     sqlx::query!(
+    //         r#"
+    //         UPDATE charging_requests
+    //         SET status = ?, updated_at = ?
+    //         WHERE id = ?
+    //         "#,
+    //         self.status.to_string(),
+    //         self.updated_at,
+    //         self.id
+    //     )
+    //     .execute(pool)
+    //     .await?;
+    //     Ok(())
+    // }
 
-    /// 更新充电请求信息
-    pub async fn update(&mut self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
-        self.updated_at = Utc::now();
+    // /// 更新充电请求信息
+    // pub async fn update(&mut self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+    //     self.updated_at = Utc::now();
 
-        sqlx::query!(
-            r#"
-            UPDATE charging_requests
-            SET mode = ?, amount = ?, queue_number = ?, status = ?, updated_at = ?
-            WHERE id = ?
-            "#,
-            self.mode.to_string(),
-            self.amount,
-            self.queue_number,
-            self.status.to_string(),
-            self.updated_at,
-            self.id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
+    //     sqlx::query!(
+    //         r#"
+    //         UPDATE charging_requests
+    //         SET mode = ?, amount = ?, queue_number = ?, status = ?, updated_at = ?
+    //         WHERE id = ?
+    //         "#,
+    //         self.mode.to_string(),
+    //         self.amount,
+    //         self.queue_number,
+    //         self.status.to_string(),
+    //         self.updated_at,
+    //         self.id
+    //     )
+    //     .execute(pool)
+    //     .await?;
+    //     Ok(())
+    // }
 
-    /// 删除充电请求
-    pub async fn delete(&self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            DELETE FROM charging_requests
-            WHERE id = ?
-            "#,
-            self.id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-    pub async fn get_waiting_requests(
-        pool: &MySqlPool,
-        pile_id: Uuid,
-    ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
-        sqlx::query_as!(
-            ChargingRequest,
-            r#"
-            SELECT
-                cr.id            AS "id!: Uuid",
-                cr.user_id       AS "user_id!: Uuid",
-                cr.mode          AS "mode!: ChargingMode",
-                CAST(cr.amount AS DOUBLE)  AS "amount!: f64",
-                cr.queue_number  AS "queue_number!: String",
-                cr.status        AS "status!: String",
-                cr.created_at    AS "created_at!: DateTime<Utc>",
-                cr.updated_at    AS "updated_at!: DateTime<Utc>"
-            FROM charging_requests AS cr
-            JOIN charging_piles   AS cp ON cp.number = cr.queue_number
-            WHERE cp.id    = ?
-            ORDER BY cr.created_at
-            "#,
-            pile_id,
-        )
-        .fetch_all(pool)
-        .await
-    }
+    // /// 删除充电请求
+    // pub async fn delete(&self, pool: &MySqlPool) -> Result<(), sqlx::Error> {
+    //     sqlx::query!(
+    //         r#"
+    //         DELETE FROM charging_requests
+    //         WHERE id = ?
+    //         "#,
+    //         self.id
+    //     )
+    //     .execute(pool)
+    //     .await?;
+    //     Ok(())
+    // }
+    // pub async fn get_waiting_requests(
+    //     pool: &MySqlPool,
+    //     pile_id: Uuid,
+    // ) -> Result<Vec<ChargingRequest>, sqlx::Error> {
+    //     sqlx::query_as!(
+    //         ChargingRequest,
+    //         r#"
+    //         SELECT
+    //             cr.id            AS "id!: Uuid",
+    //             cr.user_id       AS "user_id!: Uuid",
+    //             cr.mode          AS "mode!: ChargingMode",
+    //             CAST(cr.amount AS DOUBLE)  AS "amount!: f64",
+    //             cr.queue_number  AS "queue_number!: String",
+    //             cr.status        AS "status!: String",
+    //             cr.created_at    AS "created_at!: DateTime<Utc>",
+    //             cr.updated_at    AS "updated_at!: DateTime<Utc>"
+    //         FROM charging_requests AS cr
+    //         JOIN charging_piles   AS cp ON cp.number = cr.queue_number
+    //         WHERE cp.id    = ?
+    //         ORDER BY cr.created_at
+    //         "#,
+    //         pile_id,
+    //     )
+    //     .fetch_all(pool)
+    //     .await
+    // }
 }
 
 #[cfg(test)]

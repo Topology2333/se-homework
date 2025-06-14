@@ -116,4 +116,93 @@ impl ChargingRecord {
 
         Ok(records)
     }
+
+    /// 插入充电详单到数据库
+    pub async fn insert(&self, pool: &sqlx::MySqlPool) -> Result<(), sqlx::Error> {
+        // 将 UUID 转换为字节数组
+        let id_bytes = self.id.as_bytes().to_vec();
+        let user_id_bytes = self.user_id.as_bytes().to_vec();
+        
+        println!("🔍 准备插入充电详单: ID={}, 用户={}, 充电桩={}", self.id, self.user_id, self.pile_id);
+        
+        let result = sqlx::query(
+            r#"
+            INSERT INTO charging_records (
+                id, 
+                user_id, 
+                pile_id, 
+                mode, 
+                charging_amount, 
+                charging_fee, 
+                service_fee, 
+                total_fee, 
+                start_time, 
+                end_time, 
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(id_bytes)
+        .bind(user_id_bytes)
+        .bind(&self.pile_id)
+        .bind(self.mode.to_string())
+        .bind(self.charging_amount)
+        .bind(self.charging_fee)
+        .bind(self.service_fee)
+        .bind(self.total_fee)
+        .bind(self.start_time)
+        .bind(self.end_time)
+        .bind(self.created_at)
+        .execute(pool)
+        .await;
+
+        match result {
+            Ok(_) => {
+                println!("✅ 充电详单已保存到数据库: 用户 {}, 充电桩 {}, 充电量 {}度, 总费用 {}元", 
+                    self.user_id, self.pile_id, self.charging_amount, self.total_fee);
+                Ok(())
+            }
+            Err(e) => {
+                println!("❌ 充电详单保存失败: {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    /// 批量插入充电详单
+    pub async fn insert_batch(records: &[ChargingRecord], pool: &sqlx::MySqlPool) -> Result<(), sqlx::Error> {
+        if records.is_empty() {
+            return Ok(());
+        }
+
+        let mut query_builder = sqlx::QueryBuilder::new(
+            r#"
+            INSERT INTO charging_records (
+                id, user_id, pile_id, mode, charging_amount, 
+                charging_fee, service_fee, total_fee, start_time, end_time, created_at
+            ) 
+            "#
+        );
+
+        query_builder.push_values(records, |mut b, record| {
+            b.push_bind(record.id.as_bytes().to_vec())
+             .push_bind(record.user_id.as_bytes().to_vec())
+             .push_bind(&record.pile_id)
+             .push_bind(record.mode.to_string())
+             .push_bind(record.charging_amount)
+             .push_bind(record.charging_fee)
+             .push_bind(record.service_fee)
+             .push_bind(record.total_fee)
+             .push_bind(record.start_time)
+             .push_bind(record.end_time)
+             .push_bind(record.created_at);
+        });
+
+        let query = query_builder.build();
+        query.execute(pool).await?;
+
+        println!("✅ 批量保存 {} 条充电详单到数据库", records.len());
+
+        Ok(())
+    }
 } 

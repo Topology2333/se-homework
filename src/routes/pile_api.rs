@@ -63,23 +63,24 @@ pub async fn shutdown_pile(pool: web::Data<MySqlPool>, path: web::Path<Uuid>) ->
     }
 }
 
-#[get("/piles/{id}/waiting-requests")]
-pub async fn get_waiting_requests(
-    pool: web::Data<MySqlPool>,
-    path: web::Path<Uuid>,
-) -> impl Responder {
-    match ChargingRequest::get_waiting_requests(pool.get_ref(), path.into_inner()).await {
-        Ok(requests) => HttpResponse::Ok().json(requests),
-        Err(err) => {
-            eprintln!("Error fetching waiting requests: {:?}", err);
-            HttpResponse::InternalServerError().body("获取等待队列失败")
-        }
-    }
-}
+// #[get("/piles/{id}/waiting-requests")]
+// pub async fn get_waiting_requests(
+//     pool: web::Data<MySqlPool>,
+//     path: web::Path<Uuid>,
+// ) -> impl Responder {
+//     match ChargingRequest::get_waiting_requests(pool.get_ref(), path.into_inner()).await {
+//         Ok(requests) => HttpResponse::Ok().json(requests),
+//         Err(err) => {
+//             eprintln!("Error fetching waiting requests: {:?}", err);
+//             HttpResponse::InternalServerError().body("获取等待队列失败")
+//         }
+//     }
+// }
+
 // 修改 pile_routes 函数添加新路由
 pub fn pile_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_all_piles)
         .service(start_pile)
-        .service(shutdown_pile)
-        .service(get_waiting_requests);
+        .service(shutdown_pile);
+        // .service(get_waiting_requests);
 }
