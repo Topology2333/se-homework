@@ -1,6 +1,6 @@
 <template>
-  <el-container style="width: 90vw; margin: 0 auto; padding: 20px; background: transparent; background-color: rgba(255, 255, 255, 0.9);">
-    <el-header style="font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 30px; color: #409EFF;">
+  <el-container style="width: 60vw; margin: 0 auto; padding: 20px; background: transparent; background-color: rgba(255, 255, 255, 0.9);">
+    <el-header style="font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 30px;">
       充电请求管理
     </el-header>
 

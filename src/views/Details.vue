@@ -311,12 +311,6 @@ export default {
 </script>
 
 <style>
-body {
-  background-color: #f5f7fa;
-  min-height: 100vh;
-  padding: 20px;
-}
-
 .app-container {
   max-width: 1200px;
   margin: 0 auto;

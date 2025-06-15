@@ -79,6 +79,26 @@ impl Dispatcher {
                         let request_arc = waiting_queue.remove(idx).unwrap();
                         pile_info.queue.push_back(request_arc.clone());
                         println!("✅ 用户 {} 已加入充电桩 {} 队列", request_arc.user_id, best_pile_number);
+
+                        if let Some(pool_arc) = self.queue_manager.db_pool.read().await.as_ref() {
+                            let pool: &sqlx::MySqlPool = &**pool_arc;
+
+                            let query = r#"
+                                UPDATE charging_piles
+                                SET status = 'Charging'
+                                WHERE number = ?
+                            "#;
+
+                            if let Err(e) = sqlx::query(query)
+                                .bind(&best_pile_number)
+                                .execute(pool)
+                                .await
+                            {
+                                println!("⚠️ 无法更新充电桩 {} 状态为 Charging: {}", best_pile_number, e);
+                            } else {
+                                println!("🔄 数据库已更新充电桩 {} 状态为 Charging", best_pile_number);
+                            }
+                        }
                         // 立即开始充电（如果当前没人充电）
                         pile_info.start_next_charging(now).await;
                     }
