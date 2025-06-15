@@ -1,17 +1,17 @@
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use chrono::{DateTime, Utc, Duration};
-use serde::{Deserialize, Serialize};
 
-use crate::models::{
-    ChargingMode, ChargingPile, ChargingRequest, PileStatus as ModelsPileStatus, RequestStatus, 
-    PILE_QUEUE_CAPACITY, WAITING_AREA_CAPACITY, FAST_CHARGING_POWER, SLOW_CHARGING_POWER,
-    ChargingRecord
-};
 use crate::billing::FeeCalculator;
+use crate::models::{
+    ChargingMode, ChargingPile, ChargingRecord, ChargingRequest, PileStatus as ModelsPileStatus,
+    RequestStatus, FAST_CHARGING_POWER, PILE_QUEUE_CAPACITY, SLOW_CHARGING_POWER,
+    WAITING_AREA_CAPACITY,
+};
 
 /// 时间系统 - 30倍加速
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl TimeSystem {
         Self {
             real_start_time: Instant::now(),
             system_start_time: Utc::now(),
-            acceleration_factor: 30.0,  // 30倍时间加速
+            acceleration_factor: 30.0, // 30倍时间加速
         }
     }
 
@@ -35,7 +35,7 @@ impl TimeSystem {
         let real_elapsed = self.real_start_time.elapsed();
         let real_elapsed_seconds = real_elapsed.as_secs_f64();
         let system_elapsed_seconds = real_elapsed_seconds * self.acceleration_factor;
-        
+
         self.system_start_time + Duration::seconds(system_elapsed_seconds as i64)
     }
 
@@ -76,7 +76,11 @@ impl PileInfo {
     }
 
     /// 计算完成时间
-    pub async fn calculate_completion_time(&self, new_request: &ChargingRequest, time_system: &TimeSystem) -> f64 {
+    pub async fn calculate_completion_time(
+        &self,
+        new_request: &ChargingRequest,
+        time_system: &TimeSystem,
+    ) -> f64 {
         let power = self.get_charging_power().await;
         let remaining_amount = if let Some(ref current) = self.current_charging {
             let elapsed_hours = time_system.get_elapsed_hours(self.charging_start_time.unwrap());
@@ -86,9 +90,7 @@ impl PileInfo {
             0.0
         };
 
-        let queue_amount: f64 = self.queue.iter()
-            .map(|r| r.amount)
-            .sum();
+        let queue_amount: f64 = self.queue.iter().map(|r| r.amount).sum();
 
         (remaining_amount + queue_amount + new_request.amount) / power
     }
@@ -104,10 +106,13 @@ impl PileInfo {
     }
 
     /// 检查充电完成
-    pub async fn check_charging_completion(&mut self, time_system: &TimeSystem) -> Option<(Arc<ChargingRequest>, DateTime<Utc>)> {
-        if let (Some(ref charging), Some(start_time)) = 
-            (&self.current_charging, self.charging_start_time) {
-            
+    pub async fn check_charging_completion(
+        &mut self,
+        time_system: &TimeSystem,
+    ) -> Option<(Arc<ChargingRequest>, DateTime<Utc>)> {
+        if let (Some(ref charging), Some(start_time)) =
+            (&self.current_charging, self.charging_start_time)
+        {
             let elapsed_hours = time_system.get_elapsed_hours(start_time);
             let power = self.get_charging_power().await;
             let required_hours = charging.amount / power;
@@ -117,7 +122,7 @@ impl PileInfo {
                 let charging_start_time = start_time;
                 let completed = self.current_charging.take().unwrap();
                 self.charging_start_time = None;
-                
+
                 // 克隆并更新状态
                 let mut completed_request = (*completed).clone();
                 if let Err(e) = completed_request.complete_charging() {
@@ -125,15 +130,19 @@ impl PileInfo {
                 } else {
                     println!("✅ 请求状态已更新为已完成: {}", completed_request.user_id);
                 }
-                
-                println!("🎉 车辆 {} 在充电桩 {} 完成充电! (充电量: {}度)", 
-                    completed_request.user_id, self.pile.read().await.number, completed_request.amount);
-                
+
+                println!(
+                    "🎉 车辆 {} 在充电桩 {} 完成充电! (充电量: {}度)",
+                    completed_request.user_id,
+                    self.pile.read().await.number,
+                    completed_request.amount
+                );
+
                 let completed_arc = Arc::new(completed_request);
-                
+
                 // 立即开始下一辆车充电
                 self.start_next_charging(time_system.current_time()).await;
-                
+
                 return Some((completed_arc, charging_start_time));
             }
         }
@@ -141,10 +150,13 @@ impl PileInfo {
     }
 
     /// 开始为下一辆车充电
-    pub async fn start_next_charging(&mut self, current_time: DateTime<Utc>) -> Option<Arc<ChargingRequest>> {
+    pub async fn start_next_charging(
+        &mut self,
+        current_time: DateTime<Utc>,
+    ) -> Option<Arc<ChargingRequest>> {
         if self.current_charging.is_none() && !self.queue.is_empty() {
             let next_request = self.queue.pop_front().unwrap();
-            
+
             // 克隆请求并更新状态为"充电中"
             let mut charging_request = (*next_request).clone();
             if let Err(e) = charging_request.start_charging() {
@@ -152,14 +164,18 @@ impl PileInfo {
             } else {
                 println!("✅ 请求状态已更新为充电中: {}", charging_request.user_id);
             }
-            
+
             let charging_request_arc = Arc::new(charging_request);
             self.current_charging = Some(charging_request_arc.clone());
             self.charging_start_time = Some(current_time);
-            
-            println!("🔌 车辆 {} 在充电桩 {} 开始充电 (充电量: {}度)", 
-                charging_request_arc.user_id, self.pile.read().await.number, charging_request_arc.amount);
-            
+
+            println!(
+                "🔌 车辆 {} 在充电桩 {} 开始充电 (充电量: {}度)",
+                charging_request_arc.user_id,
+                self.pile.read().await.number,
+                charging_request_arc.amount
+            );
+
             return Some(charging_request_arc);
         }
         None
@@ -167,9 +183,9 @@ impl PileInfo {
 
     /// 获取充电进度
     pub async fn get_charging_progress(&self, time_system: &TimeSystem) -> Option<f64> {
-        if let (Some(ref charging), Some(start_time)) = 
-            (&self.current_charging, self.charging_start_time) {
-            
+        if let (Some(ref charging), Some(start_time)) =
+            (&self.current_charging, self.charging_start_time)
+        {
             let elapsed_hours = time_system.get_elapsed_hours(start_time);
             let total_hours = charging.amount / self.get_charging_power().await;
             Some((elapsed_hours / total_hours * 100.0).min(100.0))
@@ -214,21 +230,27 @@ impl QueueManager {
     /// 初始化充电桩
     pub async fn initialize_piles(&self) {
         let mut pile_infos = self.pile_infos.write().await;
-        
+
         // 创建快充桩
         for i in 1..=2 {
-            let pile = Arc::new(RwLock::new(ChargingPile::new(format!("F{}", i), ChargingMode::Fast)));
+            let pile = Arc::new(RwLock::new(ChargingPile::new(
+                format!("F{}", i),
+                ChargingMode::Fast,
+            )));
             let number = pile.read().await.number.clone();
             pile_infos.insert(number, PileInfo::new(pile));
         }
-        
+
         // 创建慢充桩
         for i in 1..=3 {
-            let pile = Arc::new(RwLock::new(ChargingPile::new(format!("T{}", i), ChargingMode::Slow)));
+            let pile = Arc::new(RwLock::new(ChargingPile::new(
+                format!("T{}", i),
+                ChargingMode::Slow,
+            )));
             let number = pile.read().await.number.clone();
             pile_infos.insert(number, PileInfo::new(pile));
         }
-        
+
         println!("充电桩初始化完成: 2个快充桩 + 3个慢充桩");
     }
 
@@ -248,8 +270,11 @@ impl QueueManager {
         }
 
         queue.push_back(request.clone());
-        println!("车辆 {} 加入等候区，当前等待: {}", 
-            request.user_id, queue.len());
+        println!(
+            "车辆 {} 加入等候区，当前等待: {}",
+            request.user_id,
+            queue.len()
+        );
         Ok(())
     }
 
@@ -260,12 +285,14 @@ impl QueueManager {
 
         for pile_info in pile_infos.values_mut() {
             // 检查充电完成
-            if let Some((completed, start_time)) = pile_info.check_charging_completion(&self.time_system).await {
+            if let Some((completed, start_time)) =
+                pile_info.check_charging_completion(&self.time_system).await
+            {
                 println!("🎯 检测到充电完成，开始生成详单...");
                 // 生成充电详单
                 let end_time = current_time;
                 let charging_time = self.time_system.get_elapsed_hours(start_time);
-                
+
                 // 计算费用
                 let pile_number = pile_info.pile.read().await.number.clone();
                 let billing_record = FeeCalculator::calculate_fee(
@@ -290,7 +317,10 @@ impl QueueManager {
                 );
 
                 // 保存充电详单到数据库
-                println!("🔍 准备保存充电详单: 用户 {}, 充电桩 {}", completed.user_id, pile_number);
+                println!(
+                    "🔍 准备保存充电详单: 用户 {}, 充电桩 {}",
+                    completed.user_id, pile_number
+                );
                 if let Some(pool) = self.db_pool.read().await.as_ref() {
                     println!("✅ 数据库连接池可用，开始保存充电详单");
                     if let Err(e) = charging_record.insert(pool).await {
@@ -307,6 +337,40 @@ impl QueueManager {
                 pile.total_charge_amount += completed.amount;
                 pile.total_charging_fee += billing_record.electricity_fee;
                 pile.total_service_fee += billing_record.service_fee;
+
+                // 保存统计信息回数据库
+                if let Some(pool_arc) = self.db_pool.read().await.as_ref() {
+                    let pool: &sqlx::MySqlPool = &**pool_arc; // 解引用 Arc -> Pool -> &Pool
+
+                    let query = r#"
+                        UPDATE charging_piles
+                        SET 
+                            status = 'Available',
+                            total_charge_count = ?,
+                            total_charge_time = ?,
+                            total_charge_amount = ?,
+                            total_charging_fee = ?,
+                            total_service_fee = ?
+                        WHERE number = ?
+                    "#;
+
+                    if let Err(e) = sqlx::query(query)
+                        .bind(pile.total_charge_count)
+                        .bind(pile.total_charge_time)
+                        .bind(pile.total_charge_amount)
+                        .bind(pile.total_charging_fee)
+                        .bind(pile.total_service_fee)
+                        .bind(&pile.number)
+                        .execute(pool)
+                        .await
+                    {
+                        println!("⚠️ 无法更新充电桩统计信息: {}", e);
+                    } else {
+                        println!("📦 成功更新充电桩 {} 的统计信息", &pile.number);
+                    }
+                } else {
+                    println!("⚠️ 数据库连接池未设置，无法更新充电桩信息");
+                }
             } else {
                 // 只有在没有充电完成的情况下，才尝试启动下一辆车
                 pile_info.start_next_charging(current_time).await;
@@ -322,7 +386,7 @@ impl QueueManager {
         let mut pile_statuses = Vec::new();
         for (_, info) in pile_infos.iter() {
             let pile = info.pile.read().await;
-            
+
             // 构建当前充电请求信息
             let current_request = info.current_charging.as_ref().map(|r| ChargingRequestInfo {
                 id: r.id,
@@ -333,18 +397,22 @@ impl QueueManager {
                 status: r.status.clone(),
                 created_at: r.created_at,
             });
-            
+
             // 构建队列请求信息
-            let queue_requests: Vec<ChargingRequestInfo> = info.queue.iter().map(|r| ChargingRequestInfo {
-                id: r.id,
-                user_id: r.user_id,
-                mode: r.mode.clone(),
-                amount: r.amount,
-                queue_number: r.queue_number.clone(),
-                status: r.status.clone(),
-                created_at: r.created_at,
-            }).collect();
-            
+            let queue_requests: Vec<ChargingRequestInfo> = info
+                .queue
+                .iter()
+                .map(|r| ChargingRequestInfo {
+                    id: r.id,
+                    user_id: r.user_id,
+                    mode: r.mode.clone(),
+                    amount: r.amount,
+                    queue_number: r.queue_number.clone(),
+                    status: r.status.clone(),
+                    created_at: r.created_at,
+                })
+                .collect();
+
             pile_statuses.push(PileStatusInfo {
                 pile_number: pile.number.clone(),
                 pile_mode: pile.mode,
@@ -362,11 +430,13 @@ impl QueueManager {
             current_time: self.time_system.current_time(),
             fast_waiting_count: waiting_queue.iter().filter(|r| r.mode == "Fast").count(),
             slow_waiting_count: waiting_queue.iter().filter(|r| r.mode == "Slow").count(),
-            fast_waiting_requests: waiting_queue.iter()
+            fast_waiting_requests: waiting_queue
+                .iter()
                 .filter(|r| r.mode == "Fast")
                 .map(|r| r.user_id)
                 .collect(),
-            slow_waiting_requests: waiting_queue.iter()
+            slow_waiting_requests: waiting_queue
+                .iter()
                 .filter(|r| r.mode == "Slow")
                 .map(|r| r.user_id)
                 .collect(),
